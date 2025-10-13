@@ -224,6 +224,7 @@ defaults:
       layout: single
       author_profile: true
       share: true
+      collection: notes
       comments: true
   # _publications
   - scope:
