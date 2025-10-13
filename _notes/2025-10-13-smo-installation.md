@@ -5,10 +5,9 @@ title: "Installation Guide SMO+NonRT RIC Rel. L  on Ubuntu 24.04"
 # <center> Installation Guide SMO+NonRT RIC Rel. L  on Ubuntu 24.04 </center>
 
 ## Prerequisites
-:::warning
 
 1. OS Ubuntu 24.04
-:::
+
 
 ## Deployment steps
 
