@@ -1,0 +1,35 @@
+---
+title: "5G Core Network: NSA vs. SA"
+collection: notes
+type: "Undergraduate course"
+permalink: /notes/5g-basic
+date: 2025-10-13
+---
+
+
+Notes on the transition from Non-Standalone (NSA) to Standalone (SA) architecture in 5G networks.
+
+1. Non-Standalone (NSA) - Option 3x
+This was the first commercially deployed 5G architecture.
+
+Core: It relies on the existing 4G EPC (Evolved Packet Core).
+
+Control Plane: The control plane (signaling) runs over the 4G LTE network.
+
+Data Plane: Data is transmitted over both 4G (LTE) and 5G (NR) simultaneously via Dual Connectivity (EN-DC).
+
+Key takeaway: NSA provides faster speeds (thanks to the 5G radio), but it doesn't unlock the full potential of 5G latencies and slicing, as it's still bottlenecked by the 4G core.
+
+2. Standalone (SA) - Option 2
+SA is the true 5G architecture.
+
+Core: Uses the new cloud-native 5G Core (5GC).
+
+Control/Data Plane: Both run entirely over the 5G New Radio (NR) interface.
+
+Benefits of 5G SA
+Lower Latency: Optimized 5GC for faster signaling.
+
+Network Slicing: Ability to carve out virtual dedicated networks (critical for IoT, VR, and industrial use cases).
+
+Massive IoT Support: Better handling of billions of low-power devices.
