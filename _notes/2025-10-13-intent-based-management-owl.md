@@ -1,5 +1,6 @@
 ---
 title: "OWL or RDF knowledge graph (KG) as RAG pipeline"
+date: 2024-05-21
 ---
 
 # <center> Enhancing Intent-Based Networking with a Knowledge Graph-Powered RAG Pipeline </center>

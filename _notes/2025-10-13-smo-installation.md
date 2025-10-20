@@ -1,5 +1,6 @@
 ---
 title: "Installation Guide SMO+NonRT RIC Rel. L  on Ubuntu 24.04"
+date: 2024-05-21
 ---
 
 # <center> Installation Guide SMO+NonRT RIC Rel. L  on Ubuntu 24.04 </center>
@@ -19,9 +20,9 @@ cd ~
 git clone https://gerrit.o-ran-sc.org/r/it/dep.git -b master --recursive
 ```
 
-:::warning
+
 :bulb: **Note:** You need to ==add the recurse sub modules flag== as some parts are git submodules pointing to existing related charts (ONAP)
-:::
+
 
 ### 2. Run Make for k8s installer
 

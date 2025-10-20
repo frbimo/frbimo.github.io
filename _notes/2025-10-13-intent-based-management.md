@@ -1,5 +1,6 @@
 ---
 title: "The Role of RDF/OWL in Intent-Based Networking (IBN)"
+date: 2024-05-21
 ---
 
 # <center> The Role of RDF/OWL in Intent-Based Networking (IBN) </center>

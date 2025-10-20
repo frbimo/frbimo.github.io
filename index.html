@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fransiscus A. Bimo - Ph.D Researcher</title>
+    <style>
+        /* CSS Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #fff;
+            background: #0a0a23;
+            position: relative;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .content {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 0;
+            background: rgba(0, 0, 50, 0.7);
+            margin-bottom: 40px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #00b4d8;
+        }
+
+        h2 {
+            color: #90e0ef;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #7209b7;
+            padding-bottom: 10px;
+        }
+
+        section {
+            background: rgba(10, 10, 35, 0.8);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+
+        ul {
+            list-style: none;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        a {
+            color: #00b4d8;
+            text-decoration: none;
+        }
+
+        /* New styling for the 'Notes' link */
+        .header-links a {
+            margin: 0 15px;
+            font-size: 1.1em;
+            padding: 5px 10px;
+            border: 1px solid #00b4d8;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .header-links a:hover {
+            background-color: rgba(0, 180, 216, 0.1);
+        }
+
+        /* End New styling */
+
+        #animation-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #7209b7;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+
+            .content {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Three.js Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Main Content -->
+    <div class="content">
+        <!-- Header Section -->
+        <header>
+            <!-- Customize your name and title here -->
+            <h1>Fransiscus A. Bimo</h1>
+            <p>Ph.D Researcher</p>
+            <div class="header-links" style="margin-top: 15px;">
+                <!-- Link to your new notes reader page -->
+                <a href="notes_reader.html">Tech Notes</a>
+            </div>
+        </header>
+
+        <!-- About Me Section -->
+        <section id="about">
+            <h2>About Me</h2>
+            <!-- Replace this with your professional bio -->
+            <p>I'm a passionate researcher focusing on cloud-native aspect and intelligent control for wireless
+                telecomunications. My expertise includes automation and autonomous RAN development. I specialize in test
+                and integration of O-RAN components and intent-based network application.</p>
+        </section>
+
+        <!-- Publications Section -->
+        <section id="publications">
+            <h2>Publications</h2>
+            <!-- Add your research papers here -->
+            <ul>
+                <li>F. A. Bimo et al., ”OSC Community Lab: The Integration Test Bed for O-RAN Software Community,” IEEE
+                    Future Networks World Forum (FNWF), 2022.</li>
+                <li>F. A. Bimo, R. -G. Cheng, C. -C. Tseng, C. -R. Chiang, C. -H. Huang and X. -W. Lin, ”Design and
+                    Implementation of Next-Generation Research Platforms,” IEEE Globecom Workshops (GC Wkshps), 2023.
+                </li>
+                <li>Azariah W, Bimo FA, Lin C-W, Cheng R-G, Nikaein N, Jana R. “A Survey on Open Radio Access Networks:
+                    Challenges, Research Directions, and Open Source Approaches,” Sen- sors. 2024</li>
+            </ul>
+        </section>
+
+        <!-- Current Activities Section -->
+        <section id="activities">
+            <h2>Current Activities</h2>
+            <!-- Update with your current projects -->
+            <ul>
+                <li>Project 1: Developing Intent-Based Network</li>
+                <li>Project 2: Test and Integration of O-RAN Projects</li>
+            </ul>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact">
+            <h2>Contact</h2>
+            <!-- Replace with your actual contact information -->
+            <p>Email: <a href="mailto:frbimo@gmail.com">frbimo@gmail.com</a></p>
+            <p>LinkedIn: <a href="https://linkedin.com/in/fransiscusbimo">linkedin.com/in/fransiscusbimo</a></p>
+        </section>
+    </div>
+
+    <!-- Animation Controls -->
+    <div id="animation-controls">
+        <button id="toggle-animation">Pause Animation</button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Three.js Animation Code
+        (function () {
+            // Scene Setup
+            const container = document.getElementById('canvas-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true });
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            // Network Nodes Visualization
+            const nodes = [];
+            const connections = [];
+            const nodeCount = 20;
+
+            // Create Network Nodes
+            const nodeGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+            for (let i = 0; i < nodeCount; i++) {
+                const material = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color().setHSL(Math.random(), 0.7, 0.7)
+                });
+                const node = new THREE.Mesh(nodeGeometry, material);
+
+                node.position.set(
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 20
+                );
+
+                nodes.push(node);
+                scene.add(node);
+            }
+
+            // Create Connections (signal waves)
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00b4d8, opacity: 0.3, transparent: true });
+            for (let i = 0; i < nodeCount; i += 2) {
+                const geometry = new THREE.BufferGeometry().setFromPoints([
+                    nodes[i].position,
+                    nodes[i + 1]?.position || nodes[0].position
+                ]);
+                const line = new THREE.Line(geometry, lineMaterial);
+                connections.push(line);
+                scene.add(line);
+            }
+
+            camera.position.z = 15;
+
+            // Animation State
+            let isAnimating = true;
+
+            // Animation Loop
+            function animate() {
+                if (!isAnimating) return;
+
+                requestAnimationFrame(animate);
+
+                // Animate nodes
+                nodes.forEach((node, index) => {
+                    node.position.y += Math.sin(Date.now() * 0.001 + index) * 0.01;
+                });
+
+                // Update connections
+                connections.forEach((line, index) => {
+                    const positions = line.geometry.attributes.position.array;
+                    positions[1] = nodes[index * 2].position.y;
+                    positions[4] = nodes[index * 2 + 1]?.position.y || nodes[0].position.y;
+                    line.geometry.attributes.position.needsUpdate = true;
+                });
+
+                renderer.render(scene, camera);
+            }
+
+            // Error Handling
+            try {
+                animate();
+            } catch (e) {
+                console.error('Animation Error:', e);
+                // Fallback: remove animation if WebGL fails
+                container.style.display = 'none';
+            }
+
+            // Animation Controls
+            const toggleButton = document.getElementById('toggle-animation');
+            toggleButton.addEventListener('click', () => {
+                isAnimating = !isAnimating;
+                toggleButton.textContent = isAnimating ? 'Pause Animation' : 'Resume Animation';
+                if (isAnimating) animate();
+            });
+
+            // Window Resize Handler
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        })();
+    </script>
+</body>
+
+</html>
