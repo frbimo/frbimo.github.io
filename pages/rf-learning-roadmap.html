@@ -316,7 +316,7 @@ footer { margin-top:4rem; text-align:center; color:var(--text-muted); font-famil
     <p class="topic-summary">How antennas focus energy in specific directions — the 3D radiation pattern.</p>
     <p>An antenna doesn't amplify power — it focuses it. Gain = how much more power goes one direction vs a perfect sphere radiator. A 15 dBi antenna is a flashlight vs a candle.</p>
     <p>Azimuth = horizontal pointing direction (0–360°). In a 3-sector site: 0°, 120°, 240°. Tilt = how much the beam angles down toward the ground.</p>
-    <div class="anim-wrap"><canvas id="c-beam" width="600" height="250"></canvas><div class="anim-label">Interactive — drag left/right: azimuth · drag up/down: tilt · top-right inset: top-down azimuth view</div></div>
+    <div class="anim-wrap"><canvas id="c-beam" width="600" height="270"></canvas><div class="anim-label">Interactive — drag left/right: azimuth · drag up/down: tilt · range bar shows coverage shrinking as tilt increases</div></div>
     <ul class="detail-list">
       <li>Mechanical tilt: physically tilt the hardware</li>
       <li>Electrical tilt: phase-shift array elements — no moving parts</li>
@@ -857,58 +857,82 @@ beam: () => {
     if (autoPlay) {
       az += 0.005*autoDir;
       if (az>AZ_MAX*.75||az<-AZ_MAX*.75) autoDir*=-1;
-      tilt = 0.05 + 0.07*Math.sin(Date.now()*.00045);
+      // sweep full tilt range so the coverage change is obvious
+      tilt = TILT_MAX*0.5 + TILT_MAX*0.5*Math.sin(Date.now()*.00038);
     }
 
-    const groundY=H*.80, ox=W*.22, oy=H*.42;
+    const groundY=H*.74, ox=W*.22, oy=H*.38;
     const azDeg=(az*180/Math.PI), tiltDeg=(tilt*180/Math.PI);
+    const sinT=Math.sin(tilt), cosT=Math.cos(tilt);
 
     // ── Ground line ─────────────────────────────────────────────────────────
     cx.strokeStyle='#1e2530'; cx.lineWidth=1;
     cx.beginPath(); cx.moveTo(0,groundY); cx.lineTo(W*.72,groundY); cx.stroke();
 
-    // ── Beam geometry: side view uses TILT as the lobe direction ─────────────
-    // tilt=0 → beam is horizontal; tilt>0 → beam angles down toward ground
-    const sinT=Math.sin(tilt), cosT=Math.cos(tilt);
-    const hitDist = sinT>0.008 ? (groundY-oy)/sinT : W*2;
-    const hitX    = ox + cosT * Math.min(hitDist, W*0.58);
-    const hitsGround = hitDist <= W*0.58;
+    // ── Schematic footprint (always visible, proportional to 1/tilt) ─────────
+    // The canvas cannot show real scale — real range >> canvas width at low tilts.
+    // We position the footprint proportionally: right edge = far, near tower = close.
+    const tiltNorm = tilt / TILT_MAX;  // 0=no tilt (far), 1=max tilt (close)
 
-    // Horizontal reference line (0° tilt reference)
-    cx.strokeStyle='rgba(255,255,255,0.1)'; cx.lineWidth=1; cx.setLineDash([4,6]);
-    cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(ox+68,oy); cx.stroke();
+    // Footprint x: expo decay so small tilts still show meaningful distance
+    const footPropX = ox + 20 + (W*0.52) * Math.pow(1 - tiltNorm, 0.55);
+
+    // Footprint size: larger at low tilt (wide illumination), smaller at high tilt
+    const footRx = Math.max(10, 14 + (1-tiltNorm)*36);
+    const footRy = Math.max(5,  6  + (1-tiltNorm)*8);
+
+    cx.save();
+    cx.beginPath(); cx.ellipse(footPropX, groundY, footRx, footRy, 0, 0, Math.PI*2);
+    cx.fillStyle=`rgba(0,229,160,${0.08+tiltNorm*0.08})`; cx.fill();
+    const footStrokeA = 0.3 + tiltNorm*0.35;
+    cx.strokeStyle=`rgba(0,229,160,${footStrokeA})`; cx.lineWidth=1.5; cx.stroke();
+    cx.restore();
+
+    // Dashed center-ray from antenna to footprint
+    cx.strokeStyle='rgba(0,229,160,0.2)'; cx.lineWidth=1; cx.setLineDash([4,5]);
+    cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(footPropX, groundY); cx.stroke();
     cx.setLineDash([]);
-    cx.fillStyle='rgba(255,255,255,0.2)'; cx.font='7px Space Mono';
-    cx.fillText('0°',ox+70,oy+3);
 
-    // Tilt angle arc (shows the angle between horizontal and beam direction)
+    // ── Coverage range bar (always visible below ground line) ────────────────
+    // Fills from left (short/max-tilt) to right (far/no-tilt) so user sees
+    // exactly how range shrinks as tilt grows.
+    const bX=ox, bY=groundY+12, bW=W*0.52, bH=10;
+    const rangeFill = Math.pow(1-tiltNorm, 0.7); // 1 = max range, 0 = min range
+    const bRgb = tiltNorm<0.35 ? '0,229,160' : tiltNorm<0.65 ? '255,209,102' : '255,107,53';
+
+    // Bar background
+    cx.fillStyle='#0a0c14'; cx.fillRect(bX,bY,bW,bH);
+    cx.strokeStyle='#1e2840'; cx.lineWidth=1; cx.strokeRect(bX,bY,bW,bH);
+    // Filled portion
+    cx.fillStyle=`rgba(${bRgb},0.35)`;
+    cx.fillRect(bX, bY, bW*rangeFill, bH);
+    // Moving edge marker
+    if (rangeFill>0.02) {
+      cx.strokeStyle=`rgba(${bRgb},0.75)`; cx.lineWidth=1.5;
+      cx.beginPath(); cx.moveTo(bX+bW*rangeFill,bY); cx.lineTo(bX+bW*rangeFill,bY+bH); cx.stroke();
+    }
+    // End labels
+    cx.fillStyle='#2a3a50'; cx.font='7px Space Mono';
+    cx.fillText('close',bX+2,bY-3);
+    cx.fillText('far →',bX+bW-24,bY-3);
+    // Range value
+    const rangeRelative = sinT>0.01 ? ((groundY-oy)/sinT/(groundY-oy)*Math.sin(TILT_MAX)).toFixed(2) : '>10';
+    cx.fillStyle=`rgba(${bRgb},0.85)`; cx.font='bold 9px Space Mono';
+    cx.fillText(`coverage range  ×${rangeRelative}`,bX,bY+bH+13);
+
+    // ── Horizontal 0° reference + tilt arc ─────────────────────────────────
+    cx.strokeStyle='rgba(255,255,255,0.1)'; cx.lineWidth=1; cx.setLineDash([4,6]);
+    cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(ox+65,oy); cx.stroke();
+    cx.setLineDash([]);
+    cx.fillStyle='rgba(255,255,255,0.18)'; cx.font='7px Space Mono';
+    cx.fillText('0°',ox+67,oy+3);
+
     if (tilt>0.01) {
       cx.strokeStyle='rgba(255,209,102,0.55)'; cx.lineWidth=1.5;
       cx.beginPath(); cx.arc(ox,oy,46,0,tilt); cx.stroke();
-      // angle label inside arc
       const midA=tilt/2;
       cx.fillStyle='rgba(255,209,102,0.85)'; cx.font='bold 9px Space Mono';
       cx.fillText(`${tiltDeg.toFixed(0)}°`, ox+52, oy+Math.sin(midA)*46+4);
-    }
-
-    // Dashed beam center ray to ground hit (makes geometry unmistakable)
-    cx.strokeStyle='rgba(0,229,160,0.22)'; cx.lineWidth=1; cx.setLineDash([4,5]);
-    const rayEndY = hitsGround ? groundY : oy+sinT*W*0.58;
-    cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(hitX, rayEndY); cx.stroke();
-    cx.setLineDash([]);
-
-    // Ground footprint ellipse — only when beam actually hits the ground
-    if (hitsGround) {
-      // Footprint width: larger when beam grazes at shallow angle, smaller when steep
-      const footRx=Math.max(9, 55-tiltDeg*2.6);
-      cx.save();
-      cx.beginPath(); cx.ellipse(hitX, groundY, footRx, 7, 0, 0, Math.PI*2);
-      cx.fillStyle='rgba(0,229,160,0.13)'; cx.fill();
-      cx.strokeStyle='rgba(0,229,160,0.45)'; cx.lineWidth=1.5; cx.stroke();
-      cx.restore();
-      // Range label below footprint
-      cx.fillStyle='rgba(0,229,160,0.45)'; cx.font='8px Space Mono';
-      cx.fillText(`↔ ${Math.round((hitX-ox)*3)}m range`, hitX-28, groundY+18);
     }
 
     // ── Tower ───────────────────────────────────────────────────────────────
@@ -921,11 +945,11 @@ beam: () => {
     drawLobe(ox, oy, tilt,         '0,229,160', 1.0);
 
     // ── Top-down azimuth inset ───────────────────────────────────────────────
-    const inR=Math.min(H*.26,60);
-    drawAzInset(W*.85, H*.28, inR);
+    const inR=Math.min(H*.22,56);
+    drawAzInset(W*.85, H*.24, inR);
 
     // ── Tilt meter (vertical bar) ────────────────────────────────────────────
-    const mX=W*.72, mY=H*.12, mW=11, mH=H*.60;
+    const mX=W*.72, mY=H*.10, mW=11, mH=H*.55;
     drawTiltMeter(mX, mY, mW, mH);
     cx.fillStyle=activeCtrl==='tilt'?'#ffd166':'#7a7040';
     cx.font='8px Space Mono';
@@ -962,88 +986,128 @@ multipath: () => {
   const W = cx._w, H = cx._h;
   let t = 0;
 
-  // Buildings as rectangles
-  const buildings = [
-    { x: W*0.38, y: H*0.15, w: 40, h: H*0.55 },
-    { x: W*0.58, y: H*0.3,  w: 35, h: H*0.5 },
-  ];
+  // Buildings — all bounce coordinates derived from these, never hardcoded
+  const B1 = { x: W*0.36, y: H*0.14, w: W*0.08, h: H*0.66 };
+  // B1: left=W*0.36  right=W*0.44  top=H*0.14  bottom=H*0.80
 
-  // Paths: [{points, delay, color}]
+  const B2 = { x: W*0.57, y: H*0.28, w: W*0.07, h: H*0.52 };
+  // B2: left=W*0.57  right=W*0.64  top=H*0.28  bottom=H*0.80
+
+  // BS and UE
+  const tx = [W*0.08, H*0.52];
+  const rx = [W*0.90, H*0.52];
+
+  // Bounce points computed from building corners
+  const b1r = [B1.x + B1.w, B1.y];          // B1 top-right corner
+  const b2r = [B2.x + B2.w, B2.y];          // B2 top-right corner
+  const b2l = [B2.x,         B2.y];          // B2 top-left  corner
+
+  // All path coordinates derived from building geometry
   const paths = [
-    { pts: [[0.12, 0.5], [0.88, 0.5]], delay: 0, color: '#00e5a0', label: 'LOS direct' },
-    { pts: [[0.12, 0.5], [0.4, 0.1], [0.88, 0.5]], delay: 18, color: '#0099ff', label: 'Reflected' },
-    { pts: [[0.12, 0.5], [0.62, 0.08], [0.88, 0.5]], delay: 32, color: '#ff6b35', label: 'Reflected +delay' },
+    {
+      // LOS is blocked by B1 — draw it faint to show obstruction
+      pts: [tx, rx],
+      delay: 0, color: '#2a5a40', label: 'LOS (blocked)', blocked: true
+    },
+    {
+      // Over B1 rooftop (1 diffraction) — bounce ON B1 top-right corner
+      pts: [tx, b1r, rx],
+      delay: 18, color: '#00e5a0', label: '1-hop rooftop'
+    },
+    {
+      // Over B1 then B2 rooftop (2 diffractions) — both bounces ON building corners
+      pts: [tx, b1r, b2r, rx],
+      delay: 36, color: '#ff6b35', label: '2-hop (+delay)'
+    },
   ];
 
-  const pulses = paths.map((p, i) => ({ pathIdx: i, prog: -p.delay / 80, speed: 0.007 }));
+  const pulses = paths.map(p => ({ path: p, prog: -p.delay / 80, speed: 0.0065 }));
+
+  function drawPath(p) {
+    cx.beginPath();
+    p.pts.forEach((pt, j) => j === 0 ? cx.moveTo(pt[0], pt[1]) : cx.lineTo(pt[0], pt[1]));
+    cx.stroke();
+  }
 
   function frame() {
     cx.clearRect(0, 0, W, H);
     cx.fillStyle = '#060810'; cx.fillRect(0, 0, W, H);
     t++;
 
-    // Buildings
-    buildings.forEach(b => {
-      cx.fillStyle = '#0f1820';
-      cx.strokeStyle = '#1e3040';
-      cx.lineWidth = 1;
+    // ── Buildings ──────────────────────────────────────────────────────────
+    [B1, B2].forEach(b => {
+      cx.fillStyle = '#0e1822'; cx.strokeStyle = '#1e3a52'; cx.lineWidth = 1.5;
       cx.fillRect(b.x, b.y, b.w, b.h);
       cx.strokeRect(b.x, b.y, b.w, b.h);
     });
 
-    // Tx & Rx
-    const tx = [W * 0.12, H * 0.5], rx = [W * 0.88, H * 0.5];
-    [[tx, '#00e5a0', 'BS'], [rx, '#ffd166', 'UE']].forEach(([pt, col, lbl]) => {
-      cx.fillStyle = col;
-      cx.beginPath(); cx.arc(pt[0], pt[1], 7, 0, Math.PI * 2); cx.fill();
-      cx.fillStyle = col; cx.font = '10px Space Mono';
-      cx.fillText(lbl, pt[0] - 8, pt[1] - 12);
-    });
-
-    // Draw path lines (faint)
-    paths.forEach((p, i) => {
-      cx.strokeStyle = p.color + '30';
+    // ── Path guide lines (faint) ───────────────────────────────────────────
+    paths.forEach(p => {
+      cx.strokeStyle = p.blocked ? '#1e2e22' : p.color + '30';
       cx.lineWidth = 1; cx.setLineDash([4, 4]);
-      cx.beginPath();
-      p.pts.forEach((pt, j) => {
-        const x = pt[0] * W, y = pt[1] * H;
-        j === 0 ? cx.moveTo(x, y) : cx.lineTo(x, y);
-      });
-      cx.stroke();
+      drawPath(p);
     });
     cx.setLineDash([]);
 
-    // Animate pulses along paths
-    pulses.forEach(pulse => {
-      pulse.prog += pulse.speed;
-      if (pulse.prog > 1.1) pulse.prog = -paths[pulse.pathIdx].delay / 80;
+    // ── Blocked-LOS marker: X at the point where LOS enters B1 ───────────
+    {
+      const bx = B1.x + B1.w * 0.5, by = tx[1];
+      cx.strokeStyle = 'rgba(255,60,60,0.4)'; cx.lineWidth = 1.5;
+      cx.beginPath(); cx.moveTo(bx-6,by-6); cx.lineTo(bx+6,by+6); cx.stroke();
+      cx.beginPath(); cx.moveTo(bx+6,by-6); cx.lineTo(bx-6,by+6); cx.stroke();
+    }
 
-      const p = paths[pulse.pathIdx];
-      const pts = p.pts.map(pt => [pt[0] * W, pt[1] * H]);
-
-      if (pulse.prog < 0 || pulse.prog > 1) return;
-      // interpolate along path segments
-      const segs = pts.length - 1;
-      const segProg = pulse.prog * segs;
-      const seg = Math.min(Math.floor(segProg), segs - 1);
-      const frac = segProg - seg;
-      const x = lerp(pts[seg][0], pts[seg + 1][0], frac);
-      const y = lerp(pts[seg][1], pts[seg + 1][1], frac);
-
-      // Pulse glow
-      const grad = cx.createRadialGradient(x, y, 0, x, y, 12);
-      grad.addColorStop(0, p.color + 'ff');
-      grad.addColorStop(1, p.color + '00');
-      cx.fillStyle = grad;
-      cx.beginPath(); cx.arc(x, y, 12, 0, Math.PI * 2); cx.fill();
-      cx.fillStyle = p.color;
-      cx.beginPath(); cx.arc(x, y, 4, 0, Math.PI * 2); cx.fill();
+    // ── Bounce markers ON building surface corners ─────────────────────────
+    paths.forEach(p => {
+      if (p.blocked) return;
+      p.pts.slice(1, -1).forEach(pt => {
+        // Outer ring
+        cx.strokeStyle = p.color + '70'; cx.lineWidth = 1.5;
+        cx.beginPath(); cx.arc(pt[0], pt[1], 7, 0, Math.PI*2); cx.stroke();
+        // Inner dot
+        cx.fillStyle = p.color + 'cc';
+        cx.beginPath(); cx.arc(pt[0], pt[1], 3, 0, Math.PI*2); cx.fill();
+        // Vertical normal line (rooftop = horizontal surface → normal points up)
+        cx.strokeStyle = p.color + '50'; cx.lineWidth = 1;
+        cx.beginPath(); cx.moveTo(pt[0], pt[1]); cx.lineTo(pt[0], pt[1]-12); cx.stroke();
+      });
     });
 
-    // Legend
+    // ── Animate pulses along non-blocked paths ─────────────────────────────
+    pulses.forEach(pulse => {
+      pulse.prog += pulse.speed;
+      if (pulse.prog > 1.1) pulse.prog = -pulse.path.delay / 80;
+      if (pulse.prog < 0 || pulse.prog > 1 || pulse.path.blocked) return;
+
+      const pts = pulse.path.pts;
+      const segs = pts.length - 1;
+      const sp = pulse.prog * segs;
+      const seg = Math.min(Math.floor(sp), segs - 1);
+      const frac = sp - seg;
+      const px = lerp(pts[seg][0], pts[seg+1][0], frac);
+      const py = lerp(pts[seg][1], pts[seg+1][1], frac);
+
+      const g = cx.createRadialGradient(px, py, 0, px, py, 11);
+      g.addColorStop(0, pulse.path.color + 'ff');
+      g.addColorStop(1, pulse.path.color + '00');
+      cx.fillStyle = g;
+      cx.beginPath(); cx.arc(px, py, 11, 0, Math.PI*2); cx.fill();
+      cx.fillStyle = pulse.path.color;
+      cx.beginPath(); cx.arc(px, py, 3.5, 0, Math.PI*2); cx.fill();
+    });
+
+    // ── BS and UE ──────────────────────────────────────────────────────────
+    [[tx, '#00e5a0', 'BS'], [rx, '#ffd166', 'UE']].forEach(([pt, col, lbl]) => {
+      cx.fillStyle = col;
+      cx.beginPath(); cx.arc(pt[0], pt[1], 7, 0, Math.PI*2); cx.fill();
+      cx.fillStyle = col; cx.font = '10px Space Mono';
+      cx.fillText(lbl, pt[0]-8, pt[1]-13);
+    });
+
+    // ── Legend ─────────────────────────────────────────────────────────────
     paths.forEach((p, i) => {
       cx.fillStyle = p.color; cx.font = '9px Space Mono';
-      cx.fillText(`${p.label} (Δt=${p.delay}ns)`, 8, 14 + i * 14);
+      cx.fillText(`${p.label}  Δt=${p.delay}ns`, 8, 14 + i*14);
     });
 
     requestAnimationFrame(frame);
