@@ -4,595 +4,608 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RF Fundamentals Roadmap — 5G Simulator Engineer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600;700;800&display=swap');
 :root {
-  --bg:#0a0c10; --surface:#0f1318; --border:#1e2530;
-  --accent:#00e5a0; --accent2:#0099ff; --accent3:#ff6b35; --warn:#ffd166;
-  --text:#c8d8e8; --muted:#4a5a6a;
+  --bg: #0a0d12;
+  --surface: #111520;
+  --surface2: #161c2a;
+  --border: #1e2840;
+  --accent: #00c8a0;
+  --accent2: #3d7fff;
+  --accent3: #ff6b3d;
+  --warn: #f5c542;
+  --text: #d4dce8;
+  --text-muted: #5a6a82;
+  --text-bright: #eef2f8;
+  --mono: 'IBM Plex Mono', monospace;
+  --serif: 'DM Serif Display', serif;
+  --sans: 'DM Sans', sans-serif;
 }
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;font-size:13px;line-height:1.7;min-height:100vh;}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,160,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,160,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
-.container{max-width:1100px;margin:0 auto;padding:40px 24px 80px;position:relative;z-index:1;}
 
-header{border-left:3px solid var(--accent);padding-left:20px;margin-bottom:48px;}
-.tag{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
-h1{font-family:'Inter',sans-serif;font-size:clamp(24px,5vw,42px);font-weight:800;color:#fff;line-height:1.1;margin-bottom:12px;}
-h1 span{color:var(--accent);}
-.subtitle{color:var(--muted);max-width:600px;font-size:12px;}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
-.you-are-here{background:linear-gradient(135deg,rgba(0,229,160,.08),rgba(0,153,255,.08));border:1px solid rgba(0,229,160,.25);border-radius:8px;padding:16px 20px;margin-bottom:40px;display:flex;gap:16px;align-items:flex-start;}
-.you-are-here .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);margin-top:5px;flex-shrink:0;box-shadow:0 0 8px var(--accent);animation:pulse 2s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
-.you-are-here strong{color:var(--accent);}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
 
-.phase{margin-bottom:40px;}
-.phase-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
-.phase-number{font-family:'Inter',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;color:var(--bg);background:var(--accent);padding:2px 8px;border-radius:2px;flex-shrink:0;}
-.phase-number.p2{background:var(--accent2);}
-.phase-number.p3{background:var(--accent3);}
-.phase-number.p4{background:var(--warn);color:#1a1a1a;}
-.phase-title{font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:#fff;}
-.phase-goal{font-size:11px;color:var(--muted);margin-left:auto;text-align:right;max-width:200px;}
-.phase-body{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,200,160,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,160,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
 
-.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer;transition:border-color .2s,transform .15s;position:relative;overflow:hidden;}
-.card::after{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent);opacity:0;transition:opacity .2s;}
-.card.p2::after{background:var(--accent2);}
-.card.p3::after{background:var(--accent3);}
-.card.p4::after{background:var(--warn);}
-.card:hover{border-color:rgba(0,229,160,.3);transform:translateY(-2px);}
-.card:hover::after{opacity:1;}
-.card.p2:hover{border-color:rgba(0,153,255,.3);}
-.card.p3:hover{border-color:rgba(255,107,53,.3);}
-.card.p4:hover{border-color:rgba(255,209,102,.3);}
-.card.expanded{border-color:rgba(0,229,160,.4);grid-column:1/-1;}
-.card.expanded::after{opacity:1;}
-.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;}
-.card-title{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:#fff;}
-.card-badge{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 6px;border-radius:2px;flex-shrink:0;}
-.badge-must{background:rgba(0,229,160,.15);color:var(--accent);border:1px solid rgba(0,229,160,.3);}
-.badge-sim{background:rgba(0,153,255,.15);color:var(--accent2);border:1px solid rgba(0,153,255,.3);}
-.badge-adv{background:rgba(255,107,53,.15);color:var(--accent3);border:1px solid rgba(255,107,53,.3);}
-.card-summary{color:var(--muted);font-size:11px;}
-.card-detail{display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
-.card.expanded .card-detail{display:block;}
-.card-detail h4{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;margin-top:12px;}
-.card-detail h4:first-child{margin-top:0;}
-.card-detail p{color:var(--text);font-size:12px;margin-bottom:6px;}
-.why-box{background:rgba(255,209,102,.07);border-left:2px solid var(--warn);padding:10px 12px;border-radius:0 4px 4px 0;margin-top:8px;}
-.why-box p{color:var(--warn);font-size:11px;margin:0;}
-.sim-box{background:rgba(0,153,255,.07);border-left:2px solid var(--accent2);padding:10px 12px;border-radius:0 4px 4px 0;margin-top:8px;}
-.sim-box p{color:#8ecfff;font-size:11px;margin:0;}
-.formula{font-family:'Space Mono',monospace;background:rgba(0,0,0,.4);border:1px solid var(--border);padding:8px 12px;border-radius:4px;font-size:12px;color:var(--accent);margin:6px 0;display:block;}
-ul.detail-list{list-style:none;padding:0;}
-ul.detail-list li{font-size:12px;color:var(--text);padding:3px 0 3px 14px;position:relative;}
-ul.detail-list li::before{content:'→';position:absolute;left:0;color:var(--muted);}
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: rgba(10,13,18,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
-/* ANIMATION CANVASES */
-.anim-wrap{margin:12px 0;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:#060810;}
-.anim-wrap canvas{display:block;width:100%;height:auto;}
-.anim-label{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-align:center;padding:4px 0 6px;text-transform:uppercase;}
+.nav-brand {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
 
-/* SIMULATOR WORKFLOW */
-.sim-workflow{margin:16px 0;display:flex;flex-direction:column;gap:4px;}
-.sw-row{display:flex;align-items:center;gap:8px;font-size:11px;}
-.sw-box{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:4px;padding:5px 10px;color:var(--text);flex:1;text-align:center;transition:border-color .3s,color .3s;}
-.sw-box.active{border-color:var(--accent2);color:var(--accent2);}
-.sw-box.highlight-int{border-color:var(--accent3)!important;color:var(--accent3)!important;}
-.sw-arrow{color:var(--muted);font-size:14px;flex-shrink:0;}
-.sw-note{font-size:10px;color:var(--muted);width:160px;flex-shrink:0;}
+.nav-links {
+  display: flex;
+  gap: 1.5rem;
+  list-style: none;
+}
 
-.connector{display:flex;align-items:center;gap:8px;margin:20px 0 28px;color:var(--muted);font-size:10px;letter-spacing:2px;text-transform:uppercase;}
-.connector::before,.connector::after{content:'';flex:1;height:1px;background:var(--border);}
+.nav-links a {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
 
-/* DEPENDENCY MAP */
-.dep-map{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;margin-top:48px;}
-.dep-map h2{font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:#fff;margin-bottom:20px;}
-.dep-flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:11px;}
-.dep-node{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text);white-space:nowrap;}
-.dep-node.you{border-color:var(--accent);color:var(--accent);}
-.dep-arrow{color:var(--muted);font-size:16px;}
+.nav-links a:hover { color: var(--accent); }
 
-/* QUICK REF */
-.quick-ref{margin-top:40px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;}
-.quick-ref h2{font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;}
-.glossary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
-.g-item{border-left:2px solid var(--border);padding-left:10px;}
-.g-term{font-size:11px;color:var(--accent);font-weight:700;font-family:'Inter',sans-serif;}
-.g-def{font-size:11px;color:var(--muted);}
-footer{margin-top:60px;text-align:center;color:var(--muted);font-size:10px;letter-spacing:1.5px;}
+/* LAYOUT */
+main {
+  position: relative;
+  z-index: 1;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 80px 2rem 6rem;
+}
 
-/* ── RAY TRACING COMPARISON ─────────────────────────────────────────────────── */
-.rt-vs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0;}
-.rt-vs-col{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:6px;padding:12px;}
-.rt-vs-col.fspl-col{border-color:rgba(0,229,160,.25);}
-.rt-vs-col.rt-col{border-color:rgba(0,153,255,.25);}
-.rt-vs-head{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;}
-.io-block{margin-bottom:8px;}
-.io-badge{display:inline-block;font-size:8px;font-weight:700;letter-spacing:1px;padding:1px 5px;border-radius:2px;margin-bottom:4px;text-transform:uppercase;}
-.io-in {background:rgba(0,229,160,.1);color:var(--accent);border:1px solid rgba(0,229,160,.25);}
-.io-out{background:rgba(255,209,102,.1);color:var(--warn);border:1px solid rgba(255,209,102,.25);}
-.io-in2{background:rgba(0,153,255,.1);color:var(--accent2);border:1px solid rgba(0,153,255,.25);}
-.io-out2{background:rgba(0,153,255,.08);color:#8ecfff;border:1px solid rgba(0,153,255,.25);}
-.io-row{display:flex;gap:6px;margin-bottom:3px;}
-.io-k{font-size:9px;font-family:'Space Mono',monospace;width:46px;flex-shrink:0;}
-.io-k.a{color:var(--accent);} .io-k.b{color:var(--accent2);}
-.io-v{font-size:9px;color:var(--text);}
-.io-note{font-size:9px;color:var(--muted);margin-top:6px;font-style:italic;}
-@media(max-width:480px){.rt-vs{grid-template-columns:1fr;}}
+/* hero */
+.hero { padding: 5rem 0 4rem; border-bottom: 1px solid var(--border); margin-bottom: 4rem; }
+.hero-tag { font-family: var(--mono); font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: var(--accent); margin-bottom: 1.5rem; display: flex; align-items: center; gap: .6rem; }
+.hero-tag::before { content:''; display:inline-block; width:20px; height:1px; background:var(--accent); }
+h1 { font-family: var(--serif); font-size: clamp(2.4rem,5vw,3.8rem); line-height:1.15; color:var(--text-bright); margin-bottom:1.5rem; letter-spacing:-.01em; }
+h1 em { font-style:italic; color:var(--accent); }
+.hero-sub { font-size:16px; color:var(--text-muted); max-width:600px; line-height:1.8; }
+
+/* problem box */
+.problem-box { margin:3rem 0; background:rgba(255,107,61,.06); border:1px solid rgba(255,107,61,.25); border-left:3px solid var(--accent3); border-radius:4px; padding:1.5rem 1.8rem; }
+.problem-box .label { font-family:var(--mono); font-size:9px; letter-spacing:.15em; text-transform:uppercase; color:var(--accent3); margin-bottom:.6rem; }
+.problem-box p { color:var(--text); font-size:14.5px; margin:0; }
+
+/* section */
+section { margin-bottom: 5rem; }
+.section-num { font-family:var(--mono); font-size:10px; color:var(--text-muted); letter-spacing:.1em; margin-bottom:.4rem; }
+h2 { font-family:var(--serif); font-size:clamp(1.6rem,3vw,2.2rem); color:var(--text-bright); margin-bottom:.6rem; line-height:1.25; }
+h3 { font-family:var(--sans); font-size:13px; font-weight:500; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); margin:0; }
+.section-goal { font-family:var(--mono); font-size:11px; color:var(--text-muted); margin-bottom:2.5rem; }
+
+/* topic block */
+.topic-block { margin-bottom:3.5rem; padding-bottom:3.5rem; border-bottom:1px solid var(--border); }
+.topic-block:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }
+.topic-header { display:flex; align-items:center; gap:1rem; margin-bottom:.8rem; }
+.t-badge { font-family:var(--mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; padding:2px 7px; border-radius:3px; }
+.t-badge.must { background:rgba(0,200,160,.12); color:var(--accent); border:1px solid rgba(0,200,160,.25); }
+.t-badge.sim  { background:rgba(61,127,255,.12); color:var(--accent2); border:1px solid rgba(61,127,255,.25); }
+.t-badge.adv  { background:rgba(255,107,61,.12); color:var(--accent3); border:1px solid rgba(255,107,61,.25); }
+.topic-summary { font-size:15px; color:var(--text-muted); margin-bottom:1.2rem; }
+
+/* body text inside topic blocks */
+.topic-block p { color:var(--text); font-size:14.5px; margin-bottom:.9rem; }
+.topic-block ul, .topic-block ol { padding-left:1.6rem; margin-bottom:.9rem; }
+.topic-block li { font-size:14px; color:var(--text); margin-bottom:.4rem; line-height:1.6; }
+
+/* sim box / why box */
+.sim-box { background:rgba(61,127,255,.07); border-left:2px solid var(--accent2); padding:.9rem 1.1rem; border-radius:0 4px 4px 0; margin:1rem 0; }
+.sim-box p { color:#8ecfff; font-size:13.5px; margin:0; }
+.why-box { background:rgba(245,197,66,.07); border-left:2px solid var(--warn); padding:.9rem 1.1rem; border-radius:0 4px 4px 0; margin:1rem 0; }
+.why-box p { color:var(--warn); font-size:13.5px; margin:0; }
+
+/* formula */
+.formula { font-family:var(--mono); background:rgba(0,0,0,.4); border:1px solid var(--border); padding:.7rem 1rem; border-radius:4px; font-size:13px; color:var(--accent); margin:.7rem 0; display:block; }
+
+/* detail list */
+.detail-list { list-style:none; padding:0; margin-bottom:.9rem; }
+.detail-list li { font-size:14px; color:var(--text); padding:3px 0 3px 18px; position:relative; }
+.detail-list li::before { content:'→'; position:absolute; left:0; color:var(--text-muted); }
+
+/* anim wrap */
+.anim-wrap { margin:1.2rem 0; border:1px solid var(--border); border-radius:6px; overflow:hidden; background:#060810; }
+.anim-wrap canvas { display:block; width:100%; height:auto; }
+.anim-label { font-family:var(--mono); font-size:10px; color:var(--text-muted); letter-spacing:.1em; text-align:center; padding:5px 0 7px; text-transform:uppercase; }
+
+/* workflow (SINR steps) */
+.sim-workflow { margin:1.2rem 0; display:flex; flex-direction:column; gap:4px; }
+.sw-row { display:flex; align-items:center; gap:8px; font-size:13px; }
+.sw-box { background:rgba(0,0,0,.4); border:1px solid var(--border); border-radius:4px; padding:6px 12px; color:var(--text); flex:1; text-align:center; }
+.sw-box.highlight-int { border-color:var(--accent3)!important; color:var(--accent3)!important; }
+.sw-arrow { color:var(--text-muted); font-size:14px; flex-shrink:0; }
+
+/* connector between phases */
+.connector { display:flex; align-items:center; gap:8px; margin:0 0 3rem; color:var(--text-muted); font-family:var(--mono); font-size:10px; letter-spacing:.15em; text-transform:uppercase; }
+.connector::before,.connector::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* rt-vs comparison */
+.rt-vs { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:1.2rem 0; }
+.rt-vs-col { background:rgba(0,0,0,.35); border:1px solid var(--border); border-radius:6px; padding:1.2rem; }
+.rt-vs-col.fspl-col { border-color:rgba(0,200,160,.25); }
+.rt-vs-col.rt-col { border-color:rgba(61,127,255,.25); }
+.rt-vs-head { font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; margin-bottom:.8rem; }
+.io-block { margin-bottom:.8rem; }
+.io-badge { display:inline-block; font-family:var(--mono); font-size:8px; font-weight:700; letter-spacing:.1em; padding:1px 6px; border-radius:2px; margin-bottom:5px; text-transform:uppercase; }
+.io-in  { background:rgba(0,200,160,.1);  color:var(--accent);  border:1px solid rgba(0,200,160,.25); }
+.io-out { background:rgba(245,197,66,.1); color:var(--warn);    border:1px solid rgba(245,197,66,.25); }
+.io-in2  { background:rgba(61,127,255,.1);  color:var(--accent2); border:1px solid rgba(61,127,255,.25); }
+.io-out2 { background:rgba(61,127,255,.08); color:#8ecfff;       border:1px solid rgba(61,127,255,.25); }
+.io-row { display:flex; gap:8px; margin-bottom:3px; }
+.io-k { font-family:var(--mono); font-size:10px; width:50px; flex-shrink:0; }
+.io-k.a { color:var(--accent); } .io-k.b { color:var(--accent2); }
+.io-v { font-size:10px; color:var(--text); }
+.io-note { font-size:11px; color:var(--text-muted); margin-top:6px; font-style:italic; }
+@media(max-width:480px) { .rt-vs { grid-template-columns:1fr; } }
+
+/* dep map + quick ref */
+.dep-map { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem; margin-top:4rem; }
+.dep-map h2 { font-family:var(--serif); font-size:1.3rem; color:var(--text-bright); margin-bottom:1.2rem; }
+.dep-flow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; }
+.dep-node { background:rgba(0,0,0,.4); border:1px solid var(--border); border-radius:4px; padding:5px 10px; color:var(--text); font-family:var(--mono); font-size:11px; }
+.dep-node.you { border-color:var(--accent); color:var(--accent); }
+.dep-arrow { color:var(--text-muted); font-size:16px; }
+
+.quick-ref { margin-top:2.5rem; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem; }
+.quick-ref h2 { font-family:var(--serif); font-size:1.3rem; color:var(--text-bright); margin-bottom:1rem; }
+.glossary-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
+.g-item { border-left:2px solid var(--border); padding-left:10px; }
+.g-term { font-family:var(--mono); font-size:11px; color:var(--accent); font-weight:700; }
+.g-def { font-size:12px; color:var(--text-muted); }
+
+footer { margin-top:4rem; text-align:center; color:var(--text-muted); font-family:var(--mono); font-size:10px; letter-spacing:.1em; padding-bottom:3rem; }
+
+/* phase badge on section-num */
+.phase-p1 { color:var(--accent); }
+.phase-p2 { color:var(--accent2); }
+.phase-p3 { color:var(--accent3); }
+.phase-p4 { color:var(--warn); }
+
+@media(max-width:640px) {
+  nav .nav-links { display:none; }
+  main { padding:72px 1rem 4rem; }
+}
 </style>
 </head>
 <body>
-<div class="container">
 
-<header>
-  <div class="tag">// Learning Roadmap · RF for 5G Simulator Engineers</div>
-  <h1>From Web Dev to<br><span>RF Fluency</span></h1>
-  <p class="subtitle">A structured path from your current baseline (O-RAN split, Shannon theorem) to confidently discussing RF in 5G AI-RAN simulator architecture.</p>
-</header>
+<nav>
+  <div class="nav-brand">// RF Roadmap</div>
+  <ul class="nav-links">
+    <li><a href="#phase1">Phase 01</a></li>
+    <li><a href="#phase2">Phase 02</a></li>
+    <li><a href="#phase3">Phase 03</a></li>
+    <li><a href="#phase4">Phase 04</a></li>
+  </ul>
+</nav>
 
-<div class="you-are-here">
-  <div class="dot"></div>
-  <div>
-    <strong>You are here →</strong> You know: O-RAN RU/DU/CU split · UL/DL concept · Shannon capacity formula · basic antenna math.<br>
-    <span style="color:var(--muted)">You need: physical intuition for RF propagation, why simulator components exist, vocabulary to follow AI-RAN architecture discussions.</span>
-  </div>
+<main>
+
+<section class="hero">
+  <div class="hero-tag">// Learning Roadmap · RF for 5G Simulator Engineers</div>
+  <h1>From Web Dev to <em>RF Fluency</em></h1>
+  <p class="hero-sub">A structured path from your current baseline (O-RAN split, Shannon theorem) to confidently discussing RF in 5G AI-RAN simulator architecture.</p>
+</section>
+
+<div class="problem-box">
+  <div class="label">// You Are Here</div>
+  <p>You know: O-RAN RU/DU/CU split · UL/DL concept · Shannon capacity formula · basic antenna math. You need: physical intuition for RF propagation, why simulator components exist, vocabulary to follow AI-RAN architecture discussions.</p>
 </div>
 
 <!-- PHASE 1 -->
-<div class="phase">
-  <div class="phase-header">
-    <div class="phase-number">PHASE 1</div>
-    <div class="phase-title">The Physical World — How Signals Travel</div>
-    <div class="phase-goal">Goal: understand why signal weakens &amp; distorts</div>
+<section id="phase1">
+  <div class="section-num phase-p1">01 · The Physical World</div>
+  <h2>How Signals Travel</h2>
+  <p class="section-goal">Goal: understand why signal weakens &amp; distorts</p>
+
+  <div class="topic-block" data-anim="fspl">
+    <div class="topic-header">
+      <h3>Free-Space Path Loss (FSPL)</h3>
+      <span class="t-badge must">Must Know</span>
+    </div>
+    <p class="topic-summary">Why signal power drops with distance — the foundation of everything.</p>
+    <p>Even in empty space, signal power spreads spherically. Energy per unit area drops as the sphere grows. Higher frequency = more loss. Doubling distance = +6 dB loss.</p>
+    <div class="anim-wrap"><canvas id="c-fspl" width="600" height="180"></canvas><div class="anim-label">Signal power spreading — sphere grows, density drops</div></div>
+    <code class="formula">FSPL (dB) = 20·log₁₀(d) + 20·log₁₀(f) + 20·log₁₀(4π/c)</code>
+    <div class="sim-box"><p>Every link budget starts here. Without FSPL you cannot compute received signal strength → no SNR → Shannon gives you nothing. It's the entry point to the whole chain.</p></div>
   </div>
-  <div class="phase-body">
 
-    <div class="card" onclick="toggle(this)" data-anim="fspl">
-      <div class="card-top">
-        <div class="card-title">Free-Space Path Loss (FSPL)</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">Why signal power drops with distance — the foundation of everything.</div>
-      <div class="card-detail">
-        <h4>Concept</h4>
-        <p>Even in empty space, signal power spreads spherically. Energy per unit area drops as the sphere grows. Higher frequency = more loss. Doubling distance = +6 dB loss.</p>
-        <div class="anim-wrap"><canvas id="c-fspl" width="600" height="180"></canvas><div class="anim-label">Signal power spreading — sphere grows, density drops</div></div>
-        <code class="formula">FSPL (dB) = 20·log₁₀(d) + 20·log₁₀(f) + 20·log₁₀(4π/c)</code>
-        <h4>Why it matters for your simulator</h4>
-        <div class="sim-box"><p>Every link budget starts here. Without FSPL you cannot compute received signal strength → no SNR → Shannon gives you nothing. It's the entry point to the whole chain.</p></div>
-      </div>
+  <div class="topic-block">
+    <div class="topic-header">
+      <h3>Frequency &amp; Wavelength</h3>
+      <span class="t-badge must">Must Know</span>
     </div>
-
-    <div class="card" onclick="toggle(this)">
-      <div class="card-top">
-        <div class="card-title">Frequency & Wavelength</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">Why 5G uses both low-band and mmWave — the fundamental trade-off.</div>
-      <div class="card-detail">
-        <h4>Concept</h4>
-        <p>λ = c / f. Higher frequency = shorter wavelength. The trade-off: mmWave has massive bandwidth but terrible propagation. Sub-6 GHz penetrates walls, travels far.</p>
-        <code class="formula">λ (meters) = 3×10⁸ / f(Hz)</code>
-        <ul class="detail-list">
-          <li>FR1 (sub-6 GHz): 410 MHz – 7.125 GHz — coverage layer</li>
-          <li>FR2 (mmWave): 24.25 – 52.6 GHz — capacity layer</li>
-          <li>Sub-1GHz (700 MHz band): deep indoor, wide area</li>
-        </ul>
-        <div class="sim-box"><p>Your simulator must model different frequency bands with different propagation behaviors. Carrier frequency changes path loss, Doppler magnitude, and antenna array element spacing (λ/2).</p></div>
-      </div>
-    </div>
-
-    <div class="card" onclick="toggle(this)">
-      <div class="card-top">
-        <div class="card-title">Harmonics &amp; Spurious Emissions</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">Why RF components generate interference at multiples of the base frequency.</div>
-      <div class="card-detail">
-        <h4>Concept</h4>
-        <p>When you amplify a sine wave, nonlinearities in the amplifier create energy at 2f, 3f, 4f... These harmonics can fall into adjacent bands and cause interference.</p>
-        <p>The Power Amplifier (PA) in the RU must operate at a "back-off" point to avoid generating harmonics. This limits transmit power efficiency.</p>
-        <div class="why-box"><p>When your team says "PA nonlinearity compensation" or "DPD (Digital Pre-Distortion)", they're talking about mitigating harmonics digitally before the analog stage.</p></div>
-      </div>
-    </div>
-
-    <div class="card" onclick="toggle(this)">
-      <div class="card-top">
-        <div class="card-title">dB, dBm, dBi — The Log World</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">RF professionals speak in logarithms. You must become fluent.</div>
-      <div class="card-detail">
-        <h4>Why logarithms?</h4>
-        <p>Signal powers span 12+ orders of magnitude. Multiplying gains/losses becomes addition in dB. Link budget = a chain of additions.</p>
-        <code class="formula">dB  = 10·log₁₀(P₂/P₁)   // power ratio</code>
-        <code class="formula">dBm = 10·log₁₀(P_mW/1mW) // absolute power</code>
-        <code class="formula">dBi = antenna gain vs isotropic radiator</code>
-        <ul class="detail-list">
-          <li>+3 dB ≈ double the power</li>
-          <li>+10 dB = 10× the power</li>
-          <li>30 dBm = 1 watt (typical RU Tx power)</li>
-          <li>-100 dBm = typical cell-edge receive power</li>
-        </ul>
-        <div class="sim-box"><p>Every RF simulator parameter is in dB/dBm. Link budget: Tx Power + Antenna Gain - Path Loss - Noise = SNR → Shannon capacity.</p></div>
-      </div>
-    </div>
-
+    <p class="topic-summary">Why 5G uses both low-band and mmWave — the fundamental trade-off.</p>
+    <p>λ = c / f. Higher frequency = shorter wavelength. The trade-off: mmWave has massive bandwidth but terrible propagation. Sub-6 GHz penetrates walls, travels far.</p>
+    <code class="formula">λ (meters) = 3×10⁸ / f(Hz)</code>
+    <ul class="detail-list">
+      <li>FR1 (sub-6 GHz): 410 MHz – 7.125 GHz — coverage layer</li>
+      <li>FR2 (mmWave): 24.25 – 52.6 GHz — capacity layer</li>
+      <li>Sub-1GHz (700 MHz band): deep indoor, wide area</li>
+    </ul>
+    <div class="sim-box"><p>Your simulator must model different frequency bands with different propagation behaviors. Carrier frequency changes path loss, Doppler magnitude, and antenna array element spacing (λ/2).</p></div>
   </div>
-</div>
+
+  <div class="topic-block">
+    <div class="topic-header">
+      <h3>Harmonics &amp; Spurious Emissions</h3>
+      <span class="t-badge must">Must Know</span>
+    </div>
+    <p class="topic-summary">Why RF components generate interference at multiples of the base frequency.</p>
+    <p>When you amplify a sine wave, nonlinearities in the amplifier create energy at 2f, 3f, 4f... These harmonics can fall into adjacent bands and cause interference.</p>
+    <p>The Power Amplifier (PA) in the RU must operate at a "back-off" point to avoid generating harmonics. This limits transmit power efficiency.</p>
+    <div class="why-box"><p>When your team says "PA nonlinearity compensation" or "DPD (Digital Pre-Distortion)", they're talking about mitigating harmonics digitally before the analog stage.</p></div>
+  </div>
+
+  <div class="topic-block">
+    <div class="topic-header">
+      <h3>dB, dBm, dBi — The Log World</h3>
+      <span class="t-badge must">Must Know</span>
+    </div>
+    <p class="topic-summary">RF professionals speak in logarithms. You must become fluent.</p>
+    <p>Signal powers span 12+ orders of magnitude. Multiplying gains/losses becomes addition in dB. Link budget = a chain of additions.</p>
+    <code class="formula">dB  = 10·log₁₀(P₂/P₁)   // power ratio</code>
+    <code class="formula">dBm = 10·log₁₀(P_mW/1mW) // absolute power</code>
+    <code class="formula">dBi = antenna gain vs isotropic radiator</code>
+    <ul class="detail-list">
+      <li>+3 dB ≈ double the power</li>
+      <li>+10 dB = 10× the power</li>
+      <li>30 dBm = 1 watt (typical RU Tx power)</li>
+      <li>-100 dBm = typical cell-edge receive power</li>
+    </ul>
+    <div class="sim-box"><p>Every RF simulator parameter is in dB/dBm. Link budget: Tx Power + Antenna Gain - Path Loss - Noise = SNR → Shannon capacity.</p></div>
+  </div>
+</section>
 
 <div class="connector">Phase 2 — Antennas &amp; Beamforming</div>
 
 <!-- PHASE 2 -->
-<div class="phase">
-  <div class="phase-header">
-    <div class="phase-number p2">PHASE 2</div>
-    <div class="phase-title">Antenna Fundamentals — Where O-RAN's RU Lives</div>
-    <div class="phase-goal">Goal: understand what the RU physically does to signals</div>
+<section id="phase2">
+  <div class="section-num phase-p2">02 · Antennas &amp; Beamforming</div>
+  <h2>Where O-RAN's RU Lives</h2>
+  <p class="section-goal">Goal: understand what the RU physically does to signals</p>
+
+  <div class="topic-block" data-anim="beam">
+    <div class="topic-header">
+      <h3>Antenna Gain, Azimuth &amp; Tilt</h3>
+      <span class="t-badge must">Must Know</span>
+    </div>
+    <p class="topic-summary">How antennas focus energy in specific directions — the 3D radiation pattern.</p>
+    <p>An antenna doesn't amplify power — it focuses it. Gain = how much more power goes one direction vs a perfect sphere radiator. A 15 dBi antenna is a flashlight vs a candle.</p>
+    <p>Azimuth = horizontal pointing direction (0–360°). In a 3-sector site: 0°, 120°, 240°. Tilt = how much the beam angles down toward the ground.</p>
+    <div class="anim-wrap"><canvas id="c-beam" width="600" height="200"></canvas><div class="anim-label">Beam steering — azimuth rotation &amp; tilt effect on coverage</div></div>
+    <ul class="detail-list">
+      <li>Mechanical tilt: physically tilt the hardware</li>
+      <li>Electrical tilt: phase-shift array elements — no moving parts</li>
+    </ul>
+    <div class="sim-box"><p>In your simulator: antenna gain pattern is an input parameter (3GPP standard model). For massive MIMO the pattern changes dynamically per UE.</p></div>
   </div>
-  <div class="phase-body">
 
-    <div class="card p2" onclick="toggle(this)" data-anim="beam">
-      <div class="card-top">
-        <div class="card-title">Antenna Gain, Azimuth &amp; Tilt</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">How antennas focus energy in specific directions — the 3D radiation pattern.</div>
-      <div class="card-detail">
-        <h4>Antenna Gain (dBi)</h4>
-        <p>An antenna doesn't amplify power — it focuses it. Gain = how much more power goes one direction vs a perfect sphere radiator. A 15 dBi antenna is a flashlight vs a candle.</p>
-        <h4>Azimuth &amp; Tilt</h4>
-        <p>Azimuth = horizontal pointing direction (0–360°). In a 3-sector site: 0°, 120°, 240°. Tilt = how much the beam angles down toward the ground.</p>
-        <div class="anim-wrap"><canvas id="c-beam" width="600" height="200"></canvas><div class="anim-label">Beam steering — azimuth rotation &amp; tilt effect on coverage</div></div>
-        <ul class="detail-list">
-          <li>Mechanical tilt: physically tilt the hardware</li>
-          <li>Electrical tilt: phase-shift array elements — no moving parts</li>
-        </ul>
-        <div class="sim-box"><p>In your simulator: antenna gain pattern is an input parameter (3GPP standard model). For massive MIMO the pattern changes dynamically per UE.</p></div>
-      </div>
+  <div class="topic-block">
+    <div class="topic-header">
+      <h3>MIMO &amp; Massive MIMO</h3>
+      <span class="t-badge must">Must Know</span>
     </div>
-
-    <div class="card p2" onclick="toggle(this)">
-      <div class="card-top">
-        <div class="card-title">MIMO &amp; Massive MIMO</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">Multiple antennas = multiple spatial streams = multiplied capacity.</div>
-      <div class="card-detail">
-        <h4>Core idea</h4>
-        <p>Multiple antennas can send different data streams simultaneously in the same frequency (spatial multiplexing), or combine to boost SNR (diversity gain).</p>
-        <h4>5G Massive MIMO</h4>
-        <p>64–256 antenna elements in the RU enables: beamforming toward specific UEs, MU-MIMO (serve many UEs at once), and interference nulling.</p>
-        <code class="formula">C = B · log₂(1 + SINR) per stream × N streams</code>
-        <div class="sim-box"><p>In Cell-Free Massive MIMO (your INFOCOM work), many distributed APs cooperate. Your simulator must model the channel H from each AP to each UE — this is where digital twins become essential.</p></div>
-      </div>
-    </div>
-
-    <div class="card p2" onclick="toggle(this)">
-      <div class="card-top">
-        <div class="card-title">OFDM &amp; Resource Blocks</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">How 5G divides spectrum into tiny frequency-time chunks.</div>
-      <div class="card-detail">
-        <h4>OFDM</h4>
-        <p>Splits bandwidth into many narrow subcarriers (15 kHz in 5G NR). Each carries a tiny part of the data. Robust against multipath fading.</p>
-        <h4>Resource Block (RB)</h4>
-        <p>12 subcarriers × 1 slot in time. The DU scheduler assigns RBs to UEs every slot (~0.5ms for µ=1).</p>
-        <div class="sim-box"><p>Throughput = RBs assigned × bits per RB. Bits per RB is determined by MCS, which is determined by SINR/CQI. You need this to map Shannon capacity to real 5G NR scheduling.</p></div>
-        <div class="why-box"><p>The DU/CU split in O-RAN exists partly because RB scheduling (DU, real-time) must be separate from session management (CU, non-real-time).</p></div>
-      </div>
-    </div>
-
-    <div class="card p2" onclick="toggle(this)">
-      <div class="card-top">
-        <div class="card-title">Spectrum Sharing (DSS, NR-U, SUL)</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">How 5G shares spectrum with LTE and other systems.</div>
-      <div class="card-detail">
-        <h4>Why it exists</h4>
-        <p>Licensed spectrum is scarce. Operators must share with legacy LTE deployments.</p>
-        <ul class="detail-list">
-          <li><strong>DSS</strong>: LTE and NR share same carrier, scheduler decides per-slot</li>
-          <li><strong>SUL</strong>: low-band spectrum for UL, high-band for DL — better UL cell-edge</li>
-          <li><strong>NR-U</strong>: 5G NR in unlicensed 6 GHz, competes with Wi-Fi using LBT</li>
-        </ul>
-        <div class="sim-box"><p>Spectrum sharing makes your interference model more complex — a UE can see interference from both NR and LTE transmissions. Your SINR must account for all of them.</p></div>
-      </div>
-    </div>
-
+    <p class="topic-summary">Multiple antennas = multiple spatial streams = multiplied capacity.</p>
+    <p>Multiple antennas can send different data streams simultaneously in the same frequency (spatial multiplexing), or combine to boost SNR (diversity gain).</p>
+    <p>64–256 antenna elements in the RU enables: beamforming toward specific UEs, MU-MIMO (serve many UEs at once), and interference nulling.</p>
+    <code class="formula">C = B · log₂(1 + SINR) per stream × N streams</code>
+    <div class="sim-box"><p>In Cell-Free Massive MIMO (your INFOCOM work), many distributed APs cooperate. Your simulator must model the channel H from each AP to each UE — this is where digital twins become essential.</p></div>
   </div>
-</div>
+
+  <div class="topic-block">
+    <div class="topic-header">
+      <h3>OFDM &amp; Resource Blocks</h3>
+      <span class="t-badge must">Must Know</span>
+    </div>
+    <p class="topic-summary">How 5G divides spectrum into tiny frequency-time chunks.</p>
+    <p>Splits bandwidth into many narrow subcarriers (15 kHz in 5G NR). Each carries a tiny part of the data. Robust against multipath fading.</p>
+    <p>12 subcarriers × 1 slot in time. The DU scheduler assigns RBs to UEs every slot (~0.5ms for µ=1).</p>
+    <div class="sim-box"><p>Throughput = RBs assigned × bits per RB. Bits per RB is determined by MCS, which is determined by SINR/CQI. You need this to map Shannon capacity to real 5G NR scheduling.</p></div>
+    <div class="why-box"><p>The DU/CU split in O-RAN exists partly because RB scheduling (DU, real-time) must be separate from session management (CU, non-real-time).</p></div>
+  </div>
+
+  <div class="topic-block">
+    <div class="topic-header">
+      <h3>Spectrum Sharing (DSS, NR-U, SUL)</h3>
+      <span class="t-badge must">Must Know</span>
+    </div>
+    <p class="topic-summary">How 5G shares spectrum with LTE and other systems.</p>
+    <p>Licensed spectrum is scarce. Operators must share with legacy LTE deployments.</p>
+    <ul class="detail-list">
+      <li><strong>DSS</strong>: LTE and NR share same carrier, scheduler decides per-slot</li>
+      <li><strong>SUL</strong>: low-band spectrum for UL, high-band for DL — better UL cell-edge</li>
+      <li><strong>NR-U</strong>: 5G NR in unlicensed 6 GHz, competes with Wi-Fi using LBT</li>
+    </ul>
+    <div class="sim-box"><p>Spectrum sharing makes your interference model more complex — a UE can see interference from both NR and LTE transmissions. Your SINR must account for all of them.</p></div>
+  </div>
+</section>
 
 <div class="connector">Phase 3 — Channel Models, Propagation &amp; Interference</div>
 
 <!-- PHASE 3 -->
-<div class="phase">
-  <div class="phase-header">
-    <div class="phase-number p3">PHASE 3</div>
-    <div class="phase-title">Propagation, Interference &amp; SINR — The Heart of Your Simulator</div>
-    <div class="phase-goal">Goal: understand why each simulator component exists</div>
+<section id="phase3">
+  <div class="section-num phase-p3">03 · Propagation &amp; Interference</div>
+  <h2>The Heart of Your Simulator</h2>
+  <p class="section-goal">Goal: understand why each simulator component exists</p>
+
+  <div class="topic-block" data-anim="multipath">
+    <div class="topic-header">
+      <h3>Multipath &amp; Fading</h3>
+      <span class="t-badge must">Must Know</span>
+    </div>
+    <p class="topic-summary">Real signals bounce off buildings — copies arrive at different times and interfere.</p>
+    <p>A transmitted signal reaches the receiver via multiple paths: direct LOS, reflections off buildings, diffraction over rooftops. Each path has different delay, amplitude, phase.</p>
+    <div class="anim-wrap"><canvas id="c-multipath" width="600" height="180"></canvas><div class="anim-label">Multipath: direct + reflected rays arrive with different delays</div></div>
+    <ul class="detail-list">
+      <li><strong>Large-scale fading</strong>: gradual power loss with distance</li>
+      <li><strong>Small-scale fading</strong>: rapid fluctuations as UE moves λ/2 (Rayleigh/Rician)</li>
+      <li><strong>Doppler</strong>: frequency shift when UE moves — causes ICI in OFDM</li>
+    </ul>
+    <div class="sim-box"><p>Standard channel models: 3GPP TR 38.901 (UMa/UMi/InH), CDL (Clustered Delay Line), TDL — each represents different environments and compute complexity.</p></div>
   </div>
-  <div class="phase-body">
 
-    <div class="card p3" onclick="toggle(this)" data-anim="multipath">
-      <div class="card-top">
-        <div class="card-title">Multipath &amp; Fading</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">Real signals bounce off buildings — copies arrive at different times and interfere.</div>
-      <div class="card-detail">
-        <h4>Multipath</h4>
-        <p>A transmitted signal reaches the receiver via multiple paths: direct LOS, reflections off buildings, diffraction over rooftops. Each path has different delay, amplitude, phase.</p>
-        <div class="anim-wrap"><canvas id="c-multipath" width="600" height="180"></canvas><div class="anim-label">Multipath: direct + reflected rays arrive with different delays</div></div>
-        <ul class="detail-list">
-          <li><strong>Large-scale fading</strong>: gradual power loss with distance</li>
-          <li><strong>Small-scale fading</strong>: rapid fluctuations as UE moves λ/2 (Rayleigh/Rician)</li>
-          <li><strong>Doppler</strong>: frequency shift when UE moves — causes ICI in OFDM</li>
-        </ul>
-        <div class="sim-box"><p>Standard channel models: 3GPP TR 38.901 (UMa/UMi/InH), CDL (Clustered Delay Line), TDL — each represents different environments and compute complexity.</p></div>
-      </div>
+  <div class="topic-block">
+    <div class="topic-header">
+      <h3>Path Loss Models</h3>
+      <span class="t-badge sim">Simulator Core</span>
     </div>
-
-    <div class="card p3" onclick="toggle(this)">
-      <div class="card-top">
-        <div class="card-title">Path Loss Models</div>
-        <span class="card-badge badge-sim">SIMULATOR CORE</span>
-      </div>
-      <div class="card-summary">Mathematical models that estimate received power — essential simulator input.</div>
-      <div class="card-detail">
-        <h4>Why not just FSPL?</h4>
-        <p>FSPL assumes empty space. Real environments have buildings, terrain, vegetation. Path loss models add empirical correction factors calibrated to measurement data.</p>
-        <ul class="detail-list">
-          <li><strong>COST-Hata / COST231</strong>: legacy, macro cells, sub-2GHz</li>
-          <li><strong>3GPP UMa/UMi (TR 38.901)</strong>: the 5G standard models — use these</li>
-          <li><strong>Close-In (CI) model</strong>: preferred for mmWave research</li>
-        </ul>
-        <code class="formula">PL(dB) = FSPL + 10·n·log₁₀(d/d₀) + χ_σ</code>
-        <p>n = path loss exponent (2=free space, 3–4=urban), χ_σ = log-normal shadowing</p>
-        <div class="sim-box"><p>Path loss model is the first thing you implement. It determines received SNR for every UE position. Everything downstream (scheduling, beamforming, handover) depends on it.</p></div>
-      </div>
-    </div>
-
-    <!-- INTERFERENCE CARD — elevated, full-width, with workflow animation -->
-    <div class="card p3" onclick="toggle(this)" data-anim="interference" style="border-color:rgba(255,107,53,0.3);">
-      <div class="card-top">
-        <div class="card-title">⚡ Interference &amp; SINR — Core of the 5G Simulator</div>
-        <span class="card-badge badge-sim">SIMULATOR CORE</span>
-      </div>
-      <div class="card-summary">Noise alone is NOT what limits 5G performance. Interference from other cells and users is the dominant impairment — and the central reason your simulator exists.</div>
-      <div class="card-detail">
-        <h4>From SNR to SINR</h4>
-        <p>Shannon uses SNR. But in any real deployment other base stations and UEs transmit in the same frequency. The operative metric is SINR:</p>
-        <code class="formula">SINR = S / (I + N)</code>
-        <p>S = desired signal, I = sum of all interference, N = thermal noise. In dense 5G, I often dominates N by 20–30 dB at cell edge.</p>
-
-        <h4>The 3 interference sources in your simulator</h4>
-        <div class="anim-wrap"><canvas id="c-interference" width="600" height="220"></canvas><div class="anim-label">Inter-cell interference — UE at cell edge sees competing signals</div></div>
-        <ul class="detail-list">
-          <li><strong>Inter-cell interference (ICI)</strong>: neighbor BSs reusing the same PRBs. Dominant at cell edge. SINR collapses when serving-cell power ≈ neighbor power.</li>
-          <li><strong>Inter-user interference (MUI)</strong>: in MU-MIMO, multiple UEs share the same time-frequency resource. Precoder tries to null this but imperfect CSI leaves residual leakage.</li>
-          <li><strong>Self-interference (TDD)</strong>: in TDD, if neighbor cell is in DL while you're receiving UL, that DL signal leaks into your UL receiver.</li>
-        </ul>
-
-        <h4>Why interference is central to the simulator workflow</h4>
-        <div class="sim-workflow" id="sw">
-          <div class="sw-row">
-            <div class="sw-box" id="sw1">UE Positions</div>
-            <div class="sw-arrow">↓</div>
-          </div>
-          <div class="sw-row">
-            <div class="sw-box" id="sw2">Path Loss Model → Received Signal Power (S)</div>
-            <div class="sw-arrow">↓</div>
-          </div>
-          <div class="sw-row">
-            <div class="sw-box highlight-int" id="sw3">⚡ Interference from ALL active transmitters (I)</div>
-            <div class="sw-arrow">↓</div>
-          </div>
-          <div class="sw-row">
-            <div class="sw-box" id="sw4">Thermal Noise floor (N = kTB)</div>
-            <div class="sw-arrow">↓</div>
-          </div>
-          <div class="sw-row">
-            <div class="sw-box" id="sw5">SINR = S / (I + N)</div>
-            <div class="sw-arrow">↓</div>
-          </div>
-          <div class="sw-row">
-            <div class="sw-box" id="sw6">CQI / MCS Selection</div>
-            <div class="sw-arrow">↓</div>
-          </div>
-          <div class="sw-row">
-            <div class="sw-box" id="sw7">Throughput = B · log₂(1 + SINR) [Shannon]</div>
-          </div>
-        </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:6px;">Remove interference from step 3 and your throughput will be wildly optimistic — the simulator becomes useless for real deployment planning.</p>
-
-        <h4>Cell-Free Massive MIMO &amp; interference</h4>
-        <div class="why-box"><p>In conventional cells you model interference as "N nearest BSs." In Cell-Free, every AP is simultaneously a potential server AND a potential interferer for every UE. The entire point of joint precoding and AP clustering is to convert interferers into cooperating servers. Interference modeling IS the system design problem.</p></div>
-
-        <h4>AI-RAN connection</h4>
-        <div class="sim-box"><p>Interference coordination is one of the top AI-RAN use cases: multi-cell RL agents learn power/beam policies to minimize aggregate I across the network. Your SINR model is what those agents are optimizing.</p></div>
-      </div>
-    </div>
-
-    <div class="card p3" onclick="toggle(this)" data-anim="raytracing" style="border-color:rgba(0,153,255,.2);">
-      <div class="card-top">
-        <div class="card-title">Ray Tracing — Site-Specific Channel Modeling</div>
-        <span class="card-badge badge-adv">ADVANCED</span>
-      </div>
-      <div class="card-summary">FSPL gives one scalar. Ray tracing gives the full physical channel — every bounce, every delay, every arrival angle. The difference determines whether your simulator is statistical or site-specific.</div>
-      <div class="card-detail">
-
-        <h4>FSPL vs Ray Tracing — Inputs &amp; Outputs</h4>
-        <div class="rt-vs">
-          <div class="rt-vs-col fspl-col">
-            <div class="rt-vs-head" style="color:var(--accent)">FSPL / Path Loss Model</div>
-            <div class="io-block">
-              <span class="io-badge io-in">Input</span>
-              <div class="io-row"><span class="io-k a">d</span><span class="io-v">Tx–Rx distance (m)</span></div>
-              <div class="io-row"><span class="io-k a">f</span><span class="io-v">Carrier frequency (Hz)</span></div>
-              <div class="io-row"><span class="io-k a">env</span><span class="io-v">Environment tag (UMa / UMi)</span></div>
-            </div>
-            <div class="io-block">
-              <span class="io-badge io-out">Output</span>
-              <div class="io-row"><span class="io-k a">PL</span><span class="io-v">Single path loss value (dB)</span></div>
-              <div class="io-row"><span class="io-k a">S</span><span class="io-v">One received power scalar (dBm)</span></div>
-            </div>
-            <p class="io-note">No geometry. No multipath. No spatial info. One distance → one number.</p>
-          </div>
-          <div class="rt-vs-col rt-col">
-            <div class="rt-vs-head" style="color:var(--accent2)">Ray Tracing</div>
-            <div class="io-block">
-              <span class="io-badge io-in2">Input</span>
-              <div class="io-row"><span class="io-k b">geo</span><span class="io-v">3D building &amp; terrain geometry</span></div>
-              <div class="io-row"><span class="io-k b">mat</span><span class="io-v">Material reflection / absorption coefficients</span></div>
-              <div class="io-row"><span class="io-k b">pos</span><span class="io-v">Exact Tx &amp; Rx 3D coordinates</span></div>
-              <div class="io-row"><span class="io-k b">f</span><span class="io-v">Carrier frequency (Hz)</span></div>
-            </div>
-            <div class="io-block">
-              <span class="io-badge io-out2">Output</span>
-              <div class="io-row"><span class="io-k b">h(τ)</span><span class="io-v">Channel Impulse Response — N paths</span></div>
-              <div class="io-row"><span class="io-k b">αₙ,τₙ</span><span class="io-v">Amplitude &amp; delay per ray path</span></div>
-              <div class="io-row"><span class="io-k b">AoA/AoD</span><span class="io-v">Arrival &amp; departure angles (3D)</span></div>
-              <div class="io-row"><span class="io-k b">H</span><span class="io-v">Full MIMO channel matrix</span></div>
-            </div>
-            <p class="io-note">Every bounce. Every delay. Full spatial structure for beamforming.</p>
-          </div>
-        </div>
-
-        <h4>How It Works — Each Ray Becomes One Channel Path</h4>
-        <p>Ray tracing launches geometric rays from the transmitter. Each ray that reaches the receiver — direct, reflected off walls, or diffracted over edges — travels a different distance and therefore arrives with a different delay and amplitude.</p>
-        <div class="anim-wrap"><canvas id="c-raytracing" width="600" height="200"></canvas><div class="anim-label">Each colored ray = one path in h(τ). LOS arrives first; reflections arrive later with lower amplitude.</div></div>
-
-        <h4>What Ray Tracing Outputs — The Channel Impulse Response</h4>
-        <p>The CIR h(τ) is a set of spikes — one per ray path — at the delay τ equal to that path's total travel distance divided by the speed of light. FSPL gives you only the first spike (LOS, τ=0). Ray tracing gives you all of them.</p>
-        <div class="anim-wrap"><canvas id="c-cir" width="600" height="165"></canvas><div class="anim-label">Channel Impulse Response h(τ): each spike is one ray arriving at the receiver with its delay and amplitude.</div></div>
-        <code class="formula">h(τ) = Σₙ αₙ · e^(jφₙ) · δ(τ − τₙ)    // sum over all N ray paths</code>
-        <p style="font-size:11px;color:var(--muted);margin-top:6px;">The <strong>delay spread</strong> (max τₙ − τ₀) tells you the channel's memory length — and how large an OFDM cyclic prefix must be to prevent inter-symbol interference. FSPL cannot give you this.</p>
-
-        <h4>How Ray Tracing Replaces FSPL in the Simulator Workflow</h4>
-        <p>Ray tracing replaces the <em>channel model block only</em>. SINR, Shannon capacity, and scheduling logic stay exactly the same — they just receive richer input.</p>
-        <div class="anim-wrap"><canvas id="c-rt-workflow" width="600" height="232"></canvas><div class="anim-label">Left: FSPL workflow. Right: Ray Tracing workflow. Orange rows = what changes. Green rows = stays the same.</div></div>
-
-        <h4>What changes vs what stays the same</h4>
-        <ul class="detail-list">
-          <li><strong>Changes — Input:</strong> FSPL needs only d + f. RT needs a 3D geometry map and material coefficients per surface.</li>
-          <li><strong>Changes — Channel model:</strong> FSPL formula (μs) → geometric ray solver (seconds–hours per layout). Run offline; replay in real-time during simulation.</li>
-          <li><strong>Changes — Channel output:</strong> scalar PL (dB) → vector of N (αₙ, τₙ, AoA, AoD) tuples → full H matrix for MIMO precoding.</li>
-          <li><strong>Stays — SINR = S / (I + N):</strong> same equation, but S is now coherently combined across paths using H rather than a scalar.</li>
-          <li><strong>Stays — Shannon / MCS / scheduling:</strong> identical downstream logic. No change needed there.</li>
-          <li><strong>Gains — Delay spread:</strong> you can validate cyclic prefix design and model inter-symbol interference accurately.</li>
-          <li><strong>Gains — Spatial accuracy:</strong> beamforming weights computed from the real H give true array gain, not a statistical estimate.</li>
-        </ul>
-
-        <div class="sim-box"><p>In your Cell-Free + digital twin work: ray tracing generates H between each distributed AP and each UE for a specific campus layout. AP placement, clustering, and precoding can be evaluated against actual geometry — not a random channel realization. The digital twin is the offline ray-trace database feeding the real-time simulator.</p></div>
-        <div class="why-box"><p>Ray tracing is compute-heavy. The practical split: run it offline for all (AP, UE-grid) pairs → store a channel database → replay in real-time simulation. This offline/online architecture is the foundation of the digital twin approach. Ray launching (outward from Tx) is faster and good for coverage maps; ray tracing (backward from Rx) is more accurate for CIR.</p></div>
-      </div>
-    </div>
-
+    <p class="topic-summary">Mathematical models that estimate received power — essential simulator input.</p>
+    <p>FSPL assumes empty space. Real environments have buildings, terrain, vegetation. Path loss models add empirical correction factors calibrated to measurement data.</p>
+    <ul class="detail-list">
+      <li><strong>COST-Hata / COST231</strong>: legacy, macro cells, sub-2GHz</li>
+      <li><strong>3GPP UMa/UMi (TR 38.901)</strong>: the 5G standard models — use these</li>
+      <li><strong>Close-In (CI) model</strong>: preferred for mmWave research</li>
+    </ul>
+    <code class="formula">PL(dB) = FSPL + 10·n·log₁₀(d/d₀) + χ_σ</code>
+    <p>n = path loss exponent (2=free space, 3–4=urban), χ_σ = log-normal shadowing</p>
+    <div class="sim-box"><p>Path loss model is the first thing you implement. It determines received SNR for every UE position. Everything downstream (scheduling, beamforming, handover) depends on it.</p></div>
   </div>
-</div>
+
+  <div class="topic-block" data-anim="interference">
+    <div class="topic-header">
+      <h3>Interference &amp; SINR — Core of the 5G Simulator</h3>
+      <span class="t-badge sim">Simulator Core</span>
+    </div>
+    <p class="topic-summary">Noise alone is NOT what limits 5G performance. Interference from other cells and users is the dominant impairment — and the central reason your simulator exists.</p>
+    <p>Shannon uses SNR. But in any real deployment other base stations and UEs transmit in the same frequency. The operative metric is SINR:</p>
+    <code class="formula">SINR = S / (I + N)</code>
+    <p>S = desired signal, I = sum of all interference, N = thermal noise. In dense 5G, I often dominates N by 20–30 dB at cell edge.</p>
+    <p>The 3 interference sources in your simulator:</p>
+    <div class="anim-wrap"><canvas id="c-interference" width="600" height="220"></canvas><div class="anim-label">Inter-cell interference — UE at cell edge sees competing signals</div></div>
+    <ul class="detail-list">
+      <li><strong>Inter-cell interference (ICI)</strong>: neighbor BSs reusing the same PRBs. Dominant at cell edge. SINR collapses when serving-cell power ≈ neighbor power.</li>
+      <li><strong>Inter-user interference (MUI)</strong>: in MU-MIMO, multiple UEs share the same time-frequency resource. Precoder tries to null this but imperfect CSI leaves residual leakage.</li>
+      <li><strong>Self-interference (TDD)</strong>: in TDD, if neighbor cell is in DL while you're receiving UL, that DL signal leaks into your UL receiver.</li>
+    </ul>
+    <p>Why interference is central to the simulator workflow:</p>
+    <div class="sim-workflow" id="sw">
+      <div class="sw-row">
+        <div class="sw-box" id="sw1">UE Positions</div>
+        <div class="sw-arrow">↓</div>
+      </div>
+      <div class="sw-row">
+        <div class="sw-box" id="sw2">Path Loss Model → Received Signal Power (S)</div>
+        <div class="sw-arrow">↓</div>
+      </div>
+      <div class="sw-row">
+        <div class="sw-box highlight-int" id="sw3">⚡ Interference from ALL active transmitters (I)</div>
+        <div class="sw-arrow">↓</div>
+      </div>
+      <div class="sw-row">
+        <div class="sw-box" id="sw4">Thermal Noise floor (N = kTB)</div>
+        <div class="sw-arrow">↓</div>
+      </div>
+      <div class="sw-row">
+        <div class="sw-box" id="sw5">SINR = S / (I + N)</div>
+        <div class="sw-arrow">↓</div>
+      </div>
+      <div class="sw-row">
+        <div class="sw-box" id="sw6">CQI / MCS Selection</div>
+        <div class="sw-arrow">↓</div>
+      </div>
+      <div class="sw-row">
+        <div class="sw-box" id="sw7">Throughput = B · log₂(1 + SINR) [Shannon]</div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-top:6px;">Remove interference from step 3 and your throughput will be wildly optimistic — the simulator becomes useless for real deployment planning.</p>
+    <div class="why-box"><p>In conventional cells you model interference as "N nearest BSs." In Cell-Free, every AP is simultaneously a potential server AND a potential interferer for every UE. The entire point of joint precoding and AP clustering is to convert interferers into cooperating servers. Interference modeling IS the system design problem.</p></div>
+    <div class="sim-box"><p>Interference coordination is one of the top AI-RAN use cases: multi-cell RL agents learn power/beam policies to minimize aggregate I across the network. Your SINR model is what those agents are optimizing.</p></div>
+  </div>
+
+  <div class="topic-block" data-anim="raytracing">
+    <div class="topic-header">
+      <h3>Ray Tracing — Site-Specific Channel Modeling</h3>
+      <span class="t-badge adv">Advanced</span>
+    </div>
+    <p class="topic-summary">FSPL gives one scalar. Ray tracing gives the full physical channel — every bounce, every delay, every arrival angle. The difference determines whether your simulator is statistical or site-specific.</p>
+
+    <p>FSPL vs Ray Tracing — Inputs &amp; Outputs:</p>
+    <div class="rt-vs">
+      <div class="rt-vs-col fspl-col">
+        <div class="rt-vs-head" style="color:var(--accent)">FSPL / Path Loss Model</div>
+        <div class="io-block">
+          <span class="io-badge io-in">Input</span>
+          <div class="io-row"><span class="io-k a">d</span><span class="io-v">Tx–Rx distance (m)</span></div>
+          <div class="io-row"><span class="io-k a">f</span><span class="io-v">Carrier frequency (Hz)</span></div>
+          <div class="io-row"><span class="io-k a">env</span><span class="io-v">Environment tag (UMa / UMi)</span></div>
+        </div>
+        <div class="io-block">
+          <span class="io-badge io-out">Output</span>
+          <div class="io-row"><span class="io-k a">PL</span><span class="io-v">Single path loss value (dB)</span></div>
+          <div class="io-row"><span class="io-k a">S</span><span class="io-v">One received power scalar (dBm)</span></div>
+        </div>
+        <p class="io-note">No geometry. No multipath. No spatial info. One distance → one number.</p>
+      </div>
+      <div class="rt-vs-col rt-col">
+        <div class="rt-vs-head" style="color:var(--accent2)">Ray Tracing</div>
+        <div class="io-block">
+          <span class="io-badge io-in2">Input</span>
+          <div class="io-row"><span class="io-k b">geo</span><span class="io-v">3D building &amp; terrain geometry</span></div>
+          <div class="io-row"><span class="io-k b">mat</span><span class="io-v">Material reflection / absorption coefficients</span></div>
+          <div class="io-row"><span class="io-k b">pos</span><span class="io-v">Exact Tx &amp; Rx 3D coordinates</span></div>
+          <div class="io-row"><span class="io-k b">f</span><span class="io-v">Carrier frequency (Hz)</span></div>
+        </div>
+        <div class="io-block">
+          <span class="io-badge io-out2">Output</span>
+          <div class="io-row"><span class="io-k b">h(τ)</span><span class="io-v">Channel Impulse Response — N paths</span></div>
+          <div class="io-row"><span class="io-k b">αₙ,τₙ</span><span class="io-v">Amplitude &amp; delay per ray path</span></div>
+          <div class="io-row"><span class="io-k b">AoA/AoD</span><span class="io-v">Arrival &amp; departure angles (3D)</span></div>
+          <div class="io-row"><span class="io-k b">H</span><span class="io-v">Full MIMO channel matrix</span></div>
+        </div>
+        <p class="io-note">Every bounce. Every delay. Full spatial structure for beamforming.</p>
+      </div>
+    </div>
+
+    <p>Ray tracing launches geometric rays from the transmitter. Each ray that reaches the receiver — direct, reflected off walls, or diffracted over edges — travels a different distance and therefore arrives with a different delay and amplitude.</p>
+    <div class="anim-wrap"><canvas id="c-raytracing" width="600" height="200"></canvas><div class="anim-label">Each colored ray = one path in h(τ). LOS arrives first; reflections arrive later with lower amplitude.</div></div>
+
+    <p>The CIR h(τ) is a set of spikes — one per ray path — at the delay τ equal to that path's total travel distance divided by the speed of light. FSPL gives you only the first spike (LOS, τ=0). Ray tracing gives you all of them.</p>
+    <div class="anim-wrap"><canvas id="c-cir" width="600" height="165"></canvas><div class="anim-label">Channel Impulse Response h(τ): each spike is one ray arriving at the receiver with its delay and amplitude.</div></div>
+    <code class="formula">h(τ) = Σₙ αₙ · e^(jφₙ) · δ(τ − τₙ)    // sum over all N ray paths</code>
+    <p style="font-size:13px;color:var(--text-muted);margin-top:6px;">The <strong>delay spread</strong> (max τₙ − τ₀) tells you the channel's memory length — and how large an OFDM cyclic prefix must be to prevent inter-symbol interference. FSPL cannot give you this.</p>
+
+    <p>Ray tracing replaces the <em>channel model block only</em>. SINR, Shannon capacity, and scheduling logic stay exactly the same — they just receive richer input.</p>
+    <div class="anim-wrap"><canvas id="c-rt-workflow" width="600" height="232"></canvas><div class="anim-label">Left: FSPL workflow. Right: Ray Tracing workflow. Orange rows = what changes. Green rows = stays the same.</div></div>
+
+    <ul class="detail-list">
+      <li><strong>Changes — Input:</strong> FSPL needs only d + f. RT needs a 3D geometry map and material coefficients per surface.</li>
+      <li><strong>Changes — Channel model:</strong> FSPL formula (μs) → geometric ray solver (seconds–hours per layout). Run offline; replay in real-time during simulation.</li>
+      <li><strong>Changes — Channel output:</strong> scalar PL (dB) → vector of N (αₙ, τₙ, AoA, AoD) tuples → full H matrix for MIMO precoding.</li>
+      <li><strong>Stays — SINR = S / (I + N):</strong> same equation, but S is now coherently combined across paths using H rather than a scalar.</li>
+      <li><strong>Stays — Shannon / MCS / scheduling:</strong> identical downstream logic. No change needed there.</li>
+      <li><strong>Gains — Delay spread:</strong> you can validate cyclic prefix design and model inter-symbol interference accurately.</li>
+      <li><strong>Gains — Spatial accuracy:</strong> beamforming weights computed from the real H give true array gain, not a statistical estimate.</li>
+    </ul>
+    <div class="sim-box"><p>In your Cell-Free + digital twin work: ray tracing generates H between each distributed AP and each UE for a specific campus layout. AP placement, clustering, and precoding can be evaluated against actual geometry — not a random channel realization. The digital twin is the offline ray-trace database feeding the real-time simulator.</p></div>
+    <div class="why-box"><p>Ray tracing is compute-heavy. The practical split: run it offline for all (AP, UE-grid) pairs → store a channel database → replay in real-time simulation. This offline/online architecture is the foundation of the digital twin approach. Ray launching (outward from Tx) is faster and good for coverage maps; ray tracing (backward from Rx) is more accurate for CIR.</p></div>
+  </div>
+</section>
 
 <div class="connector">Phase 4 — Mobility &amp; System Behavior</div>
 
 <!-- PHASE 4 -->
-<div class="phase">
-  <div class="phase-header">
-    <div class="phase-number p4">PHASE 4</div>
-    <div class="phase-title">Mobility &amp; System-Level Concepts</div>
-    <div class="phase-goal">Goal: complete the simulator architecture picture</div>
+<section id="phase4">
+  <div class="section-num phase-p4">04 · Mobility &amp; System Behavior</div>
+  <h2>Completing the Simulator Picture</h2>
+  <p class="section-goal">Goal: complete the simulator architecture picture</p>
+
+  <div class="topic-block" data-anim="handover">
+    <div class="topic-header">
+      <h3>Handover (Handoff)</h3>
+      <span class="t-badge must">Must Know</span>
+    </div>
+    <p class="topic-summary">When a moving UE switches from one base station to another — must be seamless.</p>
+    <p>A UE moving through the network eventually gets closer to a neighbor cell. Without handover the UE would experience collapsed SINR or drop the connection.</p>
+    <div class="anim-wrap"><canvas id="c-handover" width="600" height="180"></canvas><div class="anim-label">UE moves → RSRP from BS2 rises → handover triggers</div></div>
+    <p>Trigger: neighbor RSRP exceeds serving cell by threshold (A3 event) for Time-to-Trigger (TTT).</p>
+    <ul class="detail-list">
+      <li><strong>Hard handover</strong> (5G NR): break-before-make</li>
+      <li><strong>DAPS</strong>: make-before-break, 5G enhancement</li>
+      <li><strong>Conditional handover</strong>: pre-prepare target cell to reduce latency</li>
+    </ul>
+    <div class="sim-box"><p>Handover in the simulator affects throughput continuity and generates signaling load. In AI-RAN, ML models predict when to trigger proactively. Requires path loss + mobility models working first.</p></div>
   </div>
-  <div class="phase-body">
 
-    <div class="card p4" onclick="toggle(this)" data-anim="handover">
-      <div class="card-top">
-        <div class="card-title">Handover (Handoff)</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">When a moving UE switches from one base station to another — must be seamless.</div>
-      <div class="card-detail">
-        <h4>Why handover exists</h4>
-        <p>A UE moving through the network eventually gets closer to a neighbor cell. Without handover the UE would experience collapsed SINR or drop the connection.</p>
-        <div class="anim-wrap"><canvas id="c-handover" width="600" height="180"></canvas><div class="anim-label">UE moves → RSRP from BS2 rises → handover triggers</div></div>
-        <p>Trigger: neighbor RSRP exceeds serving cell by threshold (A3 event) for Time-to-Trigger (TTT).</p>
-        <ul class="detail-list">
-          <li><strong>Hard handover</strong> (5G NR): break-before-make</li>
-          <li><strong>DAPS</strong>: make-before-break, 5G enhancement</li>
-          <li><strong>Conditional handover</strong>: pre-prepare target cell to reduce latency</li>
-        </ul>
-        <div class="sim-box"><p>Handover in the simulator affects throughput continuity and generates signaling load. In AI-RAN, ML models predict when to trigger proactively. Requires path loss + mobility models working first.</p></div>
-      </div>
+  <div class="topic-block">
+    <div class="topic-header">
+      <h3>Link Budget — The Full Chain</h3>
+      <span class="t-badge must">Must Know</span>
     </div>
-
-    <div class="card p4" onclick="toggle(this)">
-      <div class="card-top">
-        <div class="card-title">Link Budget — The Full Chain</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">The complete calculation connecting transmitter to received SINR — the simulator's spine.</div>
-      <div class="card-detail">
-        <h4>Link budget equation</h4>
-        <code class="formula">RSRP = P_tx + G_tx - PL - M_fade + G_rx - NF</code>
-        <code class="formula">SINR = RSRP - (kTB + NF) - I_total</code>
-        <code class="formula">kTB = -174 + 10·log₁₀(B) dBm // B in Hz</code>
-        <code class="formula">C = B · log₂(1 + SINR_linear)</code>
-        <div class="sim-box"><p>Now you see why the order matters: FSPL → path loss → antenna gain → MIMO → interference/SINR → link budget → Shannon. Each concept adds one term to this chain. Your simulator IS this chain, evaluated for every UE position at every time step.</p></div>
-      </div>
-    </div>
-
-    <div class="card p4" onclick="toggle(this)">
-      <div class="card-top">
-        <div class="card-title">O-RAN: What the RU Does in RF Terms</div>
-        <span class="card-badge badge-must">MUST KNOW</span>
-      </div>
-      <div class="card-summary">Connecting the architecture split you know to the RF concepts you're learning.</div>
-      <div class="card-detail">
-        <h4>RU — the RF world</h4>
-        <ul class="detail-list">
-          <li>Houses the antenna array (massive MIMO elements)</li>
-          <li>Analog beamforming + digital-to-analog conversion</li>
-          <li>Power Amplifier + DPD for harmonic control</li>
-          <li>Converts IQ samples from eCPRI fronthaul into radio waves</li>
-        </ul>
-        <h4>DU — real-time digital</h4>
-        <ul class="detail-list">
-          <li>Digital beamforming/precoding using channel estimates H</li>
-          <li>OFDM modulation/demodulation</li>
-          <li>Layer 1 (PHY) + lower Layer 2 (MAC scheduler)</li>
-        </ul>
-        <h4>CU — non-real-time</h4>
-        <ul class="detail-list">
-          <li>Handover decisions, session management, PDCP</li>
-        </ul>
-        <div class="why-box"><p>The 7-2x split: beamforming weights computed in DU, applied in RU. Fronthaul carries time-domain IQ samples. Latency requirement: &lt;100µs. This is why fronthaul bandwidth and latency are critical design constraints in O-RAN.</p></div>
-      </div>
-    </div>
-
-    <div class="card p4" onclick="toggle(this)">
-      <div class="card-top">
-        <div class="card-title">AI-RAN: Where RF Meets ML</div>
-        <span class="card-badge badge-adv">ADVANCED</span>
-      </div>
-      <div class="card-summary">How AI/ML replaces or augments traditional RF algorithms in the RAN.</div>
-      <div class="card-detail">
-        <h4>Key RF problems ML is solving</h4>
-        <ul class="detail-list">
-          <li><strong>Channel estimation</strong>: ML predicts H matrix instead of pilots (saves overhead)</li>
-          <li><strong>Beam management</strong>: predict best beam without exhaustive sweep</li>
-          <li><strong>Interference coordination</strong>: multi-cell RL agents coordinate power/beams</li>
-          <li><strong>Predictive handover</strong>: anticipate UE trajectory, prepare target cell</li>
-          <li><strong>CSI feedback compression</strong>: autoencoders compress CSI — your SHAP/autoencoder knowledge connects here</li>
-        </ul>
-        <div class="why-box"><p>The RF question in every AI-RAN architecture discussion: "What is the channel input X to this ML model, and what RF output Y does it produce?" Knowing path loss, SINR, CSI, and beamforming lets you ask and answer those questions precisely.</p></div>
-      </div>
-    </div>
-
+    <p class="topic-summary">The complete calculation connecting transmitter to received SINR — the simulator's spine.</p>
+    <code class="formula">RSRP = P_tx + G_tx - PL - M_fade + G_rx - NF</code>
+    <code class="formula">SINR = RSRP - (kTB + NF) - I_total</code>
+    <code class="formula">kTB = -174 + 10·log₁₀(B) dBm // B in Hz</code>
+    <code class="formula">C = B · log₂(1 + SINR_linear)</code>
+    <div class="sim-box"><p>Now you see why the order matters: FSPL → path loss → antenna gain → MIMO → interference/SINR → link budget → Shannon. Each concept adds one term to this chain. Your simulator IS this chain, evaluated for every UE position at every time step.</p></div>
   </div>
-</div>
+
+  <div class="topic-block">
+    <div class="topic-header">
+      <h3>O-RAN: What the RU Does in RF Terms</h3>
+      <span class="t-badge must">Must Know</span>
+    </div>
+    <p class="topic-summary">Connecting the architecture split you know to the RF concepts you're learning.</p>
+    <p>RU — the RF world:</p>
+    <ul class="detail-list">
+      <li>Houses the antenna array (massive MIMO elements)</li>
+      <li>Analog beamforming + digital-to-analog conversion</li>
+      <li>Power Amplifier + DPD for harmonic control</li>
+      <li>Converts IQ samples from eCPRI fronthaul into radio waves</li>
+    </ul>
+    <p>DU — real-time digital:</p>
+    <ul class="detail-list">
+      <li>Digital beamforming/precoding using channel estimates H</li>
+      <li>OFDM modulation/demodulation</li>
+      <li>Layer 1 (PHY) + lower Layer 2 (MAC scheduler)</li>
+    </ul>
+    <p>CU — non-real-time:</p>
+    <ul class="detail-list">
+      <li>Handover decisions, session management, PDCP</li>
+    </ul>
+    <div class="why-box"><p>The 7-2x split: beamforming weights computed in DU, applied in RU. Fronthaul carries time-domain IQ samples. Latency requirement: &lt;100µs. This is why fronthaul bandwidth and latency are critical design constraints in O-RAN.</p></div>
+  </div>
+
+  <div class="topic-block">
+    <div class="topic-header">
+      <h3>AI-RAN: Where RF Meets ML</h3>
+      <span class="t-badge adv">Advanced</span>
+    </div>
+    <p class="topic-summary">How AI/ML replaces or augments traditional RF algorithms in the RAN.</p>
+    <p>Key RF problems ML is solving:</p>
+    <ul class="detail-list">
+      <li><strong>Channel estimation</strong>: ML predicts H matrix instead of pilots (saves overhead)</li>
+      <li><strong>Beam management</strong>: predict best beam without exhaustive sweep</li>
+      <li><strong>Interference coordination</strong>: multi-cell RL agents coordinate power/beams</li>
+      <li><strong>Predictive handover</strong>: anticipate UE trajectory, prepare target cell</li>
+      <li><strong>CSI feedback compression</strong>: autoencoders compress CSI — your SHAP/autoencoder knowledge connects here</li>
+    </ul>
+    <div class="why-box"><p>The RF question in every AI-RAN architecture discussion: "What is the channel input X to this ML model, and what RF output Y does it produce?" Knowing path loss, SINR, CSI, and beamforming lets you ask and answer those questions precisely.</p></div>
+  </div>
+</section>
 
 <!-- DEPENDENCY MAP -->
 <div class="dep-map">
@@ -621,7 +634,7 @@ footer{margin-top:60px;text-align:center;color:var(--muted);font-size:10px;lette
     <div class="g-item"><div class="g-term">RSRP</div><div class="g-def">Reference Signal Received Power — primary 5G signal strength metric</div></div>
     <div class="g-item"><div class="g-term">RSRQ</div><div class="g-def">Reference Signal Received Quality — RSRP normalized by total received power (includes I)</div></div>
     <div class="g-item"><div class="g-term">CQI</div><div class="g-def">Channel Quality Indicator — UE reports to DU to select MCS</div></div>
-    <div class="g-item"><div class="g-term">MCS</div><div class="g-def">Modulation & Coding Scheme — 64-QAM vs QPSK, determines bits per symbol</div></div>
+    <div class="g-item"><div class="g-term">MCS</div><div class="g-def">Modulation &amp; Coding Scheme — 64-QAM vs QPSK, determines bits per symbol</div></div>
     <div class="g-item"><div class="g-term">CSI</div><div class="g-def">Channel State Information — the H matrix describing the MIMO channel</div></div>
     <div class="g-item"><div class="g-term">PRB</div><div class="g-def">Physical Resource Block — 12 subcarriers × 1 slot, atomic scheduling unit</div></div>
     <div class="g-item"><div class="g-term">ICIC</div><div class="g-def">Inter-Cell Interference Coordination — frequency/power coordination between cells</div></div>
@@ -633,23 +646,11 @@ footer{margin-top:60px;text-align:center;color:var(--muted);font-size:10px;lette
   </div>
 </div>
 
-<footer>CLICK ANY CARD TO EXPAND · INTERFERENCE IS CENTRAL TO THE 5G SIMULATOR WORKFLOW</footer>
+<footer>RF LEARNING ROADMAP · 5G SIMULATOR ENGINEER PATH</footer>
 
-</div><!-- /container -->
+</main>
 
 <script>
-// ─── CARD TOGGLE ─────────────────────────────────────────────────────────────
-function toggle(card) {
-  const was = card.classList.contains('expanded');
-  const phase = card.closest('.phase-body');
-  if (phase) phase.querySelectorAll('.card.expanded').forEach(c => c.classList.remove('expanded'));
-  if (!was) {
-    card.classList.add('expanded');
-    const anim = card.dataset.anim;
-    if (anim) setTimeout(() => startAnim(anim), 60);
-  }
-}
-
 // ─── ANIMATION REGISTRY ──────────────────────────────────────────────────────
 const running = {};
 function startAnim(name) {
@@ -1390,6 +1391,17 @@ handover: () => {
 }
 
 }; // end anims
+
+// ─── INTERSECTION OBSERVER: auto-start animations on scroll ──────────────────
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    const name = e.target.dataset.anim;
+    if (name) startAnim(name);
+    io.unobserve(e.target);
+  });
+}, { threshold: 0.15 });
+document.querySelectorAll('[data-anim]').forEach(el => io.observe(el));
 
 </script>
 </body>
