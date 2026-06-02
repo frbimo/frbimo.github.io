@@ -103,6 +103,25 @@ ul.detail-list li::before{content:'→';position:absolute;left:0;color:var(--mut
 .g-term{font-size:11px;color:var(--accent);font-weight:700;font-family:'Inter',sans-serif;}
 .g-def{font-size:11px;color:var(--muted);}
 footer{margin-top:60px;text-align:center;color:var(--muted);font-size:10px;letter-spacing:1.5px;}
+
+/* ── RAY TRACING COMPARISON ─────────────────────────────────────────────────── */
+.rt-vs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0;}
+.rt-vs-col{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:6px;padding:12px;}
+.rt-vs-col.fspl-col{border-color:rgba(0,229,160,.25);}
+.rt-vs-col.rt-col{border-color:rgba(0,153,255,.25);}
+.rt-vs-head{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;}
+.io-block{margin-bottom:8px;}
+.io-badge{display:inline-block;font-size:8px;font-weight:700;letter-spacing:1px;padding:1px 5px;border-radius:2px;margin-bottom:4px;text-transform:uppercase;}
+.io-in {background:rgba(0,229,160,.1);color:var(--accent);border:1px solid rgba(0,229,160,.25);}
+.io-out{background:rgba(255,209,102,.1);color:var(--warn);border:1px solid rgba(255,209,102,.25);}
+.io-in2{background:rgba(0,153,255,.1);color:var(--accent2);border:1px solid rgba(0,153,255,.25);}
+.io-out2{background:rgba(0,153,255,.08);color:#8ecfff;border:1px solid rgba(0,153,255,.25);}
+.io-row{display:flex;gap:6px;margin-bottom:3px;}
+.io-k{font-size:9px;font-family:'Space Mono',monospace;width:46px;flex-shrink:0;}
+.io-k.a{color:var(--accent);} .io-k.b{color:var(--accent2);}
+.io-v{font-size:9px;color:var(--text);}
+.io-note{font-size:9px;color:var(--muted);margin-top:6px;font-style:italic;}
+@media(max-width:480px){.rt-vs{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -400,23 +419,78 @@ footer{margin-top:60px;text-align:center;color:var(--muted);font-size:10px;lette
       </div>
     </div>
 
-    <div class="card p3" onclick="toggle(this)" data-anim="raytracing">
+    <div class="card p3" onclick="toggle(this)" data-anim="raytracing" style="border-color:rgba(0,153,255,.2);">
       <div class="card-top">
-        <div class="card-title">Ray Tracing vs Ray Launching (RAAB)</div>
-        <span class="card-badge badge-sim">SIMULATOR CORE</span>
+        <div class="card-title">Ray Tracing — Site-Specific Channel Modeling</div>
+        <span class="card-badge badge-adv">ADVANCED</span>
       </div>
-      <div class="card-summary">Physics-accurate propagation for specific environments — used in digital twins.</div>
+      <div class="card-summary">FSPL gives one scalar. Ray tracing gives the full physical channel — every bounce, every delay, every arrival angle. The difference determines whether your simulator is statistical or site-specific.</div>
       <div class="card-detail">
-        <h4>Why ray tracing?</h4>
-        <p>Stochastic path loss models give statistical averages. Ray tracing gives the actual channel for a specific building layout using geometric optics: rays reflect, diffract, scatter off 3D geometry.</p>
-        <div class="anim-wrap"><canvas id="c-raytracing" width="600" height="180"></canvas><div class="anim-label">Ray tracing — rays bounce off geometry to reach receiver</div></div>
+
+        <h4>FSPL vs Ray Tracing — Inputs &amp; Outputs</h4>
+        <div class="rt-vs">
+          <div class="rt-vs-col fspl-col">
+            <div class="rt-vs-head" style="color:var(--accent)">FSPL / Path Loss Model</div>
+            <div class="io-block">
+              <span class="io-badge io-in">Input</span>
+              <div class="io-row"><span class="io-k a">d</span><span class="io-v">Tx–Rx distance (m)</span></div>
+              <div class="io-row"><span class="io-k a">f</span><span class="io-v">Carrier frequency (Hz)</span></div>
+              <div class="io-row"><span class="io-k a">env</span><span class="io-v">Environment tag (UMa / UMi)</span></div>
+            </div>
+            <div class="io-block">
+              <span class="io-badge io-out">Output</span>
+              <div class="io-row"><span class="io-k a">PL</span><span class="io-v">Single path loss value (dB)</span></div>
+              <div class="io-row"><span class="io-k a">S</span><span class="io-v">One received power scalar (dBm)</span></div>
+            </div>
+            <p class="io-note">No geometry. No multipath. No spatial info. One distance → one number.</p>
+          </div>
+          <div class="rt-vs-col rt-col">
+            <div class="rt-vs-head" style="color:var(--accent2)">Ray Tracing</div>
+            <div class="io-block">
+              <span class="io-badge io-in2">Input</span>
+              <div class="io-row"><span class="io-k b">geo</span><span class="io-v">3D building &amp; terrain geometry</span></div>
+              <div class="io-row"><span class="io-k b">mat</span><span class="io-v">Material reflection / absorption coefficients</span></div>
+              <div class="io-row"><span class="io-k b">pos</span><span class="io-v">Exact Tx &amp; Rx 3D coordinates</span></div>
+              <div class="io-row"><span class="io-k b">f</span><span class="io-v">Carrier frequency (Hz)</span></div>
+            </div>
+            <div class="io-block">
+              <span class="io-badge io-out2">Output</span>
+              <div class="io-row"><span class="io-k b">h(τ)</span><span class="io-v">Channel Impulse Response — N paths</span></div>
+              <div class="io-row"><span class="io-k b">αₙ,τₙ</span><span class="io-v">Amplitude &amp; delay per ray path</span></div>
+              <div class="io-row"><span class="io-k b">AoA/AoD</span><span class="io-v">Arrival &amp; departure angles (3D)</span></div>
+              <div class="io-row"><span class="io-k b">H</span><span class="io-v">Full MIMO channel matrix</span></div>
+            </div>
+            <p class="io-note">Every bounce. Every delay. Full spatial structure for beamforming.</p>
+          </div>
+        </div>
+
+        <h4>How It Works — Each Ray Becomes One Channel Path</h4>
+        <p>Ray tracing launches geometric rays from the transmitter. Each ray that reaches the receiver — direct, reflected off walls, or diffracted over edges — travels a different distance and therefore arrives with a different delay and amplitude.</p>
+        <div class="anim-wrap"><canvas id="c-raytracing" width="600" height="200"></canvas><div class="anim-label">Each colored ray = one path in h(τ). LOS arrives first; reflections arrive later with lower amplitude.</div></div>
+
+        <h4>What Ray Tracing Outputs — The Channel Impulse Response</h4>
+        <p>The CIR h(τ) is a set of spikes — one per ray path — at the delay τ equal to that path's total travel distance divided by the speed of light. FSPL gives you only the first spike (LOS, τ=0). Ray tracing gives you all of them.</p>
+        <div class="anim-wrap"><canvas id="c-cir" width="600" height="165"></canvas><div class="anim-label">Channel Impulse Response h(τ): each spike is one ray arriving at the receiver with its delay and amplitude.</div></div>
+        <code class="formula">h(τ) = Σₙ αₙ · e^(jφₙ) · δ(τ − τₙ)    // sum over all N ray paths</code>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;">The <strong>delay spread</strong> (max τₙ − τ₀) tells you the channel's memory length — and how large an OFDM cyclic prefix must be to prevent inter-symbol interference. FSPL cannot give you this.</p>
+
+        <h4>How Ray Tracing Replaces FSPL in the Simulator Workflow</h4>
+        <p>Ray tracing replaces the <em>channel model block only</em>. SINR, Shannon capacity, and scheduling logic stay exactly the same — they just receive richer input.</p>
+        <div class="anim-wrap"><canvas id="c-rt-workflow" width="600" height="232"></canvas><div class="anim-label">Left: FSPL workflow. Right: Ray Tracing workflow. Orange rows = what changes. Green rows = stays the same.</div></div>
+
+        <h4>What changes vs what stays the same</h4>
         <ul class="detail-list">
-          <li><strong>Ray tracing</strong>: backward from receiver, accurate, O(N²) expensive</li>
-          <li><strong>Ray launching</strong>: outward from transmitter, faster, good for coverage maps</li>
-          <li><strong>RAAB</strong>: extends ray launching for massive MIMO beamforming evaluation</li>
+          <li><strong>Changes — Input:</strong> FSPL needs only d + f. RT needs a 3D geometry map and material coefficients per surface.</li>
+          <li><strong>Changes — Channel model:</strong> FSPL formula (μs) → geometric ray solver (seconds–hours per layout). Run offline; replay in real-time during simulation.</li>
+          <li><strong>Changes — Channel output:</strong> scalar PL (dB) → vector of N (αₙ, τₙ, AoA, AoD) tuples → full H matrix for MIMO precoding.</li>
+          <li><strong>Stays — SINR = S / (I + N):</strong> same equation, but S is now coherently combined across paths using H rather than a scalar.</li>
+          <li><strong>Stays — Shannon / MCS / scheduling:</strong> identical downstream logic. No change needed there.</li>
+          <li><strong>Gains — Delay spread:</strong> you can validate cyclic prefix design and model inter-symbol interference accurately.</li>
+          <li><strong>Gains — Spatial accuracy:</strong> beamforming weights computed from the real H give true array gain, not a statistical estimate.</li>
         </ul>
-        <div class="sim-box"><p>In your Cell-Free + digital twin work: ray tracing generates channel matrix H between each distributed AP and each UE. This H is the input to beamforming/precoding. A digital twin lets you run this for a specific campus without real measurement campaigns.</p></div>
-        <div class="why-box"><p>Ray tracing comes AFTER path loss models because you need to understand what you're computing (the channel) before understanding the sophisticated tool to compute it accurately.</p></div>
+
+        <div class="sim-box"><p>In your Cell-Free + digital twin work: ray tracing generates H between each distributed AP and each UE for a specific campus layout. AP placement, clustering, and precoding can be evaluated against actual geometry — not a random channel realization. The digital twin is the offline ray-trace database feeding the real-time simulator.</p></div>
+        <div class="why-box"><p>Ray tracing is compute-heavy. The practical split: run it offline for all (AP, UE-grid) pairs → store a channel database → replay in real-time simulation. This offline/online architecture is the foundation of the digital twin approach. Ray launching (outward from Tx) is faster and good for coverage maps; ray tracing (backward from Rx) is more accurate for CIR.</p></div>
       </div>
     </div>
 
@@ -1027,6 +1101,178 @@ raytracing: () => {
       cx.fillText(lbl, p.x - 6, p.y - 12);
     });
 
+    requestAnimationFrame(frame);
+  }
+  frame();
+  setTimeout(()=>{ startAnim('cir'); startAnim('rt_workflow'); }, 80);
+},
+
+// ── CIR: Channel Impulse Response stem plot ───────────────────────────────────
+cir: () => {
+  const cx = ctx('c-cir'); if (!cx) return;
+  const W = cx._w, H = cx._h;
+  let t = 0;
+  const pL=48, pB=H-24, pT=22, pR=W-12;
+  const pW=pR-pL, pH=pB-pT, maxTau=65;
+  const paths=[
+    {tau:0,  a:1.00, col:'#00e5a0', lbl:'LOS',          tauLbl:'0 ns'},
+    {tau:16, a:0.58, col:'#0099ff', lbl:'Reflection 1',  tauLbl:'16 ns'},
+    {tau:36, a:0.28, col:'#ff6b35', lbl:'Reflection 2',  tauLbl:'36 ns'},
+    {tau:50, a:0.14, col:'#ffd166', lbl:'Diffraction',   tauLbl:'50 ns'},
+  ];
+
+  function frame() {
+    cx.clearRect(0,0,W,H); cx.fillStyle='#060810'; cx.fillRect(0,0,W,H);
+    t++;
+    // axes
+    cx.strokeStyle='#2a3a4a'; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(pL,pT); cx.lineTo(pL,pB); cx.lineTo(pR,pB); cx.stroke();
+    // axis labels
+    cx.fillStyle='#4a5a6a'; cx.font='8px Space Mono';
+    cx.fillText('τ — delay (ns)', pR-72, pB+16);
+    cx.save(); cx.translate(12,pT+pH/2); cx.rotate(-Math.PI/2);
+    cx.fillText('amplitude |αₙ|',0,0); cx.restore();
+    // x ticks + grid
+    [0,15,30,45,60].forEach(d=>{
+      const x=pL+(d/maxTau)*pW;
+      cx.fillStyle='#3a4a5a'; cx.font='8px Space Mono';
+      cx.fillText(d, x-(d>9?5:3), pB+14);
+      cx.strokeStyle='rgba(42,58,74,0.45)'; cx.lineWidth=0.5;
+      cx.beginPath(); cx.moveTo(x,pT); cx.lineTo(x,pB); cx.stroke();
+    });
+    // stems — appear sequentially then gently pulse
+    paths.forEach((p,i)=>{
+      const rev=Math.min(1,Math.max(0,(t-i*28)/16));
+      if(rev<=0) return;
+      const x=pL+(p.tau/maxTau)*pW;
+      const sh=p.a*pH*0.84*rev*(1+0.035*Math.sin(t*.042+i));
+      const sy=pB-sh;
+      // glow
+      const g=cx.createRadialGradient(x,sy,0,x,sy,15);
+      g.addColorStop(0,p.col+'55'); g.addColorStop(1,p.col+'00');
+      cx.fillStyle=g; cx.beginPath(); cx.arc(x,sy,15,0,Math.PI*2); cx.fill();
+      // stem
+      cx.strokeStyle=p.col; cx.lineWidth=2.5;
+      cx.beginPath(); cx.moveTo(x,pB); cx.lineTo(x,sy); cx.stroke();
+      // top dot
+      cx.fillStyle=p.col; cx.beginPath(); cx.arc(x,sy,4,0,Math.PI*2); cx.fill();
+      // label (fade in)
+      if(rev>0.85){
+        const lx=Math.max(pL+2, Math.min(pR-52, x-18));
+        cx.fillStyle=p.col; cx.font='8px Space Mono';
+        cx.fillText(p.lbl, lx, sy-11);
+        cx.fillStyle='#4a5a6a'; cx.font='8px Space Mono';
+        cx.fillText(p.tauLbl, lx, sy-21);
+      }
+    });
+    // delay spread bracket (appears after all spikes are visible)
+    if(t>135){
+      const al=Math.min(1,(t-135)/22);
+      const x0=pL, x1=pL+(50/maxTau)*pW, ay=pT+6;
+      cx.strokeStyle=`rgba(255,209,102,${al*.55})`; cx.lineWidth=1; cx.setLineDash([3,3]);
+      cx.beginPath(); cx.moveTo(x0,ay); cx.lineTo(x1,ay); cx.stroke(); cx.setLineDash([]);
+      cx.fillStyle=`rgba(255,209,102,${al*.9})`; cx.font='8px Space Mono';
+      cx.fillText('← delay spread: 50 ns →', x0+4, ay-3);
+      cx.fillStyle=`rgba(255,209,102,${al*.5})`; cx.font='8px Space Mono';
+      cx.fillText('(FSPL sees only the LOS spike)', x0+4, ay+10);
+    }
+    requestAnimationFrame(frame);
+  }
+  frame();
+},
+
+// ── RT WORKFLOW: side-by-side FSPL vs Ray Tracing pipeline ───────────────────
+rt_workflow: () => {
+  const cx = ctx('c-rt-workflow'); if (!cx) return;
+  const W = cx._w, H = cx._h;
+  let t = 0;
+  const rows=[
+    {tag:'INPUT',         old:'d, f (distance + freq)',         neo:'3D geometry + positions + materials', diff:true},
+    {tag:'CHANNEL MODEL', old:'FSPL / path loss formula',       neo:'Ray Tracer (geometric optics)',        diff:true},
+    {tag:'CH. OUTPUT',    old:'PL scalar (dB)  →  S',          neo:'h(τ): N paths → H matrix (MIMO)',      diff:true},
+    {tag:'SINR',          old:'S / (I + N)',                   neo:'S_combined / (I + N)  +  H-based BF',  diff:false},
+    {tag:'RESULT',        old:'Throughput (statistical)',       neo:'Throughput (site-specific)',            diff:false},
+  ];
+  const N=rows.length, gX=W/2;
+  const bW=gX-18, rH=(H-30)/N, bH=rH-9;
+  const lX=6, rX=gX+8;
+  const CYCLE=N*72+50;
+
+  function box(x,y,w,h,tag,txt,col,hl){
+    cx.fillStyle='rgba(8,11,16,0.92)'; cx.fillRect(x,y,w,h);
+    cx.strokeStyle=col+(hl?'cc':'38'); cx.lineWidth=hl?1.5:0.8;
+    cx.strokeRect(x,y,w,h);
+    cx.fillStyle=col+(hl?'99':'44'); cx.font='7px Space Mono';
+    cx.fillText(tag, x+6, y+11);
+    cx.fillStyle=hl?'#c8d8e8':'#5a6a7a'; cx.font='9px Space Mono';
+    // clip long text
+    cx.save(); cx.beginPath(); cx.rect(x+6,y+13,w-12,h-16); cx.clip();
+    cx.fillText(txt, x+6, y+25); cx.restore();
+  }
+
+  function arrowDown(x,y1,y2,col,al){
+    const ax=x+bW/2;
+    const alpha=Math.floor(al*200).toString(16).padStart(2,'0');
+    cx.strokeStyle=col+alpha; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(ax,y1); cx.lineTo(ax,y2-5); cx.stroke();
+    cx.fillStyle=col+alpha;
+    cx.beginPath(); cx.moveTo(ax,y2); cx.lineTo(ax-4,y2-8); cx.lineTo(ax+4,y2-8); cx.closePath(); cx.fill();
+  }
+
+  function frame(){
+    cx.clearRect(0,0,W,H); cx.fillStyle='#060810'; cx.fillRect(0,0,W,H);
+    t++;
+    // column headers
+    cx.fillStyle='rgba(0,229,160,.7)'; cx.font='8px Space Mono';
+    cx.fillText('FSPL WORKFLOW', lX+4, 12);
+    cx.fillStyle='rgba(0,153,255,.7)';
+    cx.fillText('RAY TRACING WORKFLOW', rX+4, 12);
+    // centre divider
+    cx.strokeStyle='#1e2530'; cx.lineWidth=1; cx.setLineDash([3,4]);
+    cx.beginPath(); cx.moveTo(gX,0); cx.lineTo(gX,H); cx.stroke(); cx.setLineDash([]);
+
+    const ct=t%CYCLE;
+    const activeRow=Math.min(N-1,Math.floor(ct/72));
+    const rowFrac=Math.min(1,(ct%72)/22);
+
+    rows.forEach((r,i)=>{
+      const y=24+i*rH, hl=i===activeRow;
+      const lCol=r.diff?(hl?'#ff6b35':'#5a3020'):'#00e5a0';
+      const rCol=r.diff?(hl?'#0099ff':'#1a2a44'):'#00e5a0';
+      box(lX,y,bW,bH,r.tag,r.old,lCol,hl);
+      box(rX,y,bW,bH,r.tag,r.neo,rCol,hl);
+      if(i<N-1){
+        arrowDown(lX,y+bH,y+rH,hl?lCol:'#2a3a4a',hl?0.85:0.25);
+        arrowDown(rX,y+bH,y+rH,hl?rCol:'#2a3a4a',hl?0.85:0.25);
+      }
+      // REPLACES arrow for changed rows when active
+      if(r.diff && hl && rowFrac>0.25){
+        const al=Math.min(1,(rowFrac-0.25)/0.35);
+        const my=y+bH/2, x1=lX+bW+4, x2=rX-4;
+        cx.strokeStyle=`rgba(255,107,53,${al*.75})`; cx.lineWidth=1;
+        cx.beginPath(); cx.moveTo(x1,my); cx.lineTo(x2-7,my); cx.stroke();
+        cx.fillStyle=`rgba(255,107,53,${al*.75})`;
+        cx.beginPath(); cx.moveTo(x2,my); cx.lineTo(x2-8,my-4); cx.lineTo(x2-8,my+4); cx.closePath(); cx.fill();
+        cx.fillStyle=`rgba(255,107,53,${al})`; cx.font='7px Space Mono';
+        cx.fillText('REPLACES', x1+(x2-x1)/2-18, my-3);
+      }
+    });
+
+    // traveling data packet
+    if(activeRow<N-1 && ct%72>48){
+      const frac=(ct%72-48)/24;
+      const y1=24+activeRow*rH+bH, y2=24+(activeRow+1)*rH;
+      const py=y1+(y2-y1)*frac;
+      const lCol=rows[activeRow].diff?'#ff6b35':'#00e5a0';
+      const rCol=rows[activeRow].diff?'#0099ff':'#00e5a0';
+      [lX+bW/2, rX+bW/2].forEach((px,si)=>{
+        const col=si===0?lCol:rCol;
+        const g=cx.createRadialGradient(px,py,0,px,py,9);
+        g.addColorStop(0,col+'ff'); g.addColorStop(1,col+'00');
+        cx.fillStyle=g; cx.beginPath(); cx.arc(px,py,9,0,Math.PI*2); cx.fill();
+        cx.fillStyle=col; cx.beginPath(); cx.arc(px,py,3,0,Math.PI*2); cx.fill();
+      });
+    }
     requestAnimationFrame(frame);
   }
   frame();

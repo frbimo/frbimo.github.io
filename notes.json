@@ -21,6 +21,12 @@
     "type": "page"
   },
   {
+    "title": "Model Distillation for RAN",
+    "file": "pages/model-distillation-ran.html",
+    "category": "AI / ML",
+    "type": "page"
+  },
+  {
     "title": "The Role of RDF/OWL in IBN",
     "file": "notes/intent-based-management.md",
     "category": "Intent-Based Networking"

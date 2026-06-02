@@ -1,0 +1,2891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Model Distillation in RAN — A Field Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d12;
+    --surface: #111520;
+    --surface2: #161c2a;
+    --border: #1e2840;
+    --accent: #00c8a0;
+    --accent2: #3d7fff;
+    --accent3: #ff6b3d;
+    --warn: #f5c542;
+    --text: #d4dce8;
+    --text-muted: #5a6a82;
+    --text-bright: #eef2f8;
+    --mono: 'IBM Plex Mono', monospace;
+    --serif: 'DM Serif Display', serif;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* GRID BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(10,13,18,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-brand {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--accent); }
+
+  /* LAYOUT */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 80px 2rem 6rem;
+  }
+
+  /* HERO */
+  .hero {
+    padding: 5rem 0 4rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4rem;
+  }
+
+  .hero-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .hero-tag::before {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(2.4rem, 5vw, 3.8rem);
+    line-height: 1.15;
+    color: var(--text-bright);
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-sub {
+    font-size: 16px;
+    color: var(--text-muted);
+    max-width: 600px;
+    line-height: 1.8;
+  }
+
+  /* PROBLEM CALLOUT */
+  .problem-box {
+    margin: 3rem 0;
+    background: rgba(255,107,61,0.06);
+    border: 1px solid rgba(255,107,61,0.25);
+    border-left: 3px solid var(--accent3);
+    border-radius: 4px;
+    padding: 1.5rem 1.8rem;
+  }
+
+  .problem-box .label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent3);
+    margin-bottom: 0.6rem;
+  }
+
+  .problem-box p {
+    color: var(--text);
+    font-size: 14.5px;
+  }
+
+  /* SECTION */
+  section {
+    margin-bottom: 5rem;
+  }
+
+  .section-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-bottom: 0.4rem;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    color: var(--text-bright);
+    margin-bottom: 1.4rem;
+    line-height: 1.25;
+  }
+
+  h3 {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin: 2rem 0 0.8rem;
+  }
+
+  p { margin-bottom: 1rem; color: var(--text); }
+
+  /* ANALOGY CARD */
+  .analogy {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.6rem;
+    margin: 1.5rem 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .analogy::before {
+    content: '"';
+    position: absolute;
+    top: -10px; right: 16px;
+    font-family: var(--serif);
+    font-size: 8rem;
+    color: rgba(0,200,160,0.06);
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .analogy-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.6rem;
+  }
+
+  .analogy p { color: var(--text); font-size: 14.5px; margin: 0; }
+
+  /* DIAGRAM */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2rem;
+    margin: 2rem 0;
+    overflow-x: auto;
+  }
+
+  .diagram-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  /* DISTILLATION FLOW */
+  .distil-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .flow-node {
+    flex: 1;
+    border: 1px solid;
+    border-radius: 4px;
+    padding: 1rem 1.2rem;
+    position: relative;
+  }
+
+  .flow-node.teacher {
+    border-color: rgba(61,127,255,0.4);
+    background: rgba(61,127,255,0.06);
+  }
+
+  .flow-node.student {
+    border-color: rgba(0,200,160,0.4);
+    background: rgba(0,200,160,0.06);
+  }
+
+  .flow-node.data {
+    border-color: rgba(245,197,66,0.4);
+    background: rgba(245,197,66,0.05);
+  }
+
+  .flow-node .node-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  .teacher .node-tag { color: var(--accent2); }
+  .student .node-tag { color: var(--accent); }
+  .data .node-tag { color: var(--warn); }
+
+  .flow-node .node-title {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-bright);
+    margin-bottom: 0.3rem;
+  }
+
+  .flow-node .node-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0;
+    color: var(--text-muted);
+    font-size: 18px;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .flow-arrow span {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+  }
+
+  .flow-two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  /* RAN TIME BUDGET DIAGRAM */
+  .time-budget {
+    margin: 2rem 0;
+  }
+
+  .tb-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .tb-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    width: 140px;
+    flex-shrink: 0;
+  }
+
+  .tb-bar-wrap {
+    flex: 1;
+    height: 26px;
+    background: var(--surface2);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .tb-bar {
+    height: 100%;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .tb-bar.frame { background: rgba(245,197,66,0.2); color: var(--warn); border: 1px solid rgba(245,197,66,0.3); width: 100%; }
+  .tb-bar.phy   { background: rgba(61,127,255,0.2); color: var(--accent2); border: 1px solid rgba(61,127,255,0.3); width: 30%; }
+  .tb-bar.mac   { background: rgba(61,127,255,0.15); color: var(--accent2); border: 1px solid rgba(61,127,255,0.2); width: 20%; }
+  .tb-bar.ai-big { background: rgba(255,107,61,0.2); color: var(--accent3); border: 1px solid rgba(255,107,61,0.3); width: 80%; }
+  .tb-bar.ai-small { background: rgba(0,200,160,0.2); color: var(--accent); border: 1px solid rgba(0,200,160,0.3); width: 18%; }
+
+  .tb-caption {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 0.8rem;
+  }
+
+  /* COMPARISON TABLE */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+  }
+
+  .cg-cell {
+    background: var(--surface);
+    padding: 0.9rem 1rem;
+    font-size: 13px;
+  }
+
+  .cg-cell.header {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--surface2);
+  }
+
+  .cg-cell .good { color: var(--accent); }
+  .cg-cell .bad  { color: var(--accent3); }
+  .cg-cell .mid  { color: var(--warn); }
+
+  /* KNOWLEDGE TYPES */
+  .k-types {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .k-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1.2rem;
+  }
+
+  .k-card .k-icon {
+    font-size: 22px;
+    margin-bottom: 0.6rem;
+  }
+
+  .k-card .k-title {
+    font-weight: 500;
+    color: var(--text-bright);
+    font-size: 13.5px;
+    margin-bottom: 0.3rem;
+  }
+
+  .k-card .k-desc {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+
+  /* RAN USE CASES */
+  .use-cases {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+  }
+
+  .uc-row {
+    display: grid;
+    grid-template-columns: 200px 80px 1fr;
+    gap: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  .uc-row:last-child { border-bottom: none; }
+  .uc-row:hover { background: var(--surface2); }
+
+  .uc-row.header {
+    background: var(--surface2);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .uc-cell {
+    padding: 0.85rem 1rem;
+    font-size: 13px;
+    border-right: 1px solid var(--border);
+  }
+
+  .uc-cell:last-child { border-right: none; }
+
+  .uc-cell .func-name {
+    color: var(--text-bright);
+    font-weight: 500;
+    margin-bottom: 0.15rem;
+  }
+
+  .uc-cell .func-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .budget-chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    margin-top: 4px;
+  }
+
+  .budget-chip.tight { background: rgba(255,107,61,0.15); color: var(--accent3); }
+  .budget-chip.med   { background: rgba(245,197,66,0.15); color: var(--warn); }
+  .budget-chip.relax { background: rgba(0,200,160,0.1); color: var(--accent); }
+
+  /* SOFT LABELS BOX */
+  .soft-label-demo {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .sl-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+
+  .sl-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .sl-class {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    width: 120px;
+    flex-shrink: 0;
+  }
+
+  .sl-bars {
+    display: flex;
+    gap: 0.5rem;
+    flex: 1;
+    align-items: center;
+  }
+
+  .sl-bar {
+    height: 16px;
+    border-radius: 2px;
+    min-width: 4px;
+    transition: width 0.8s ease;
+  }
+
+  .sl-bar.teacher-bar { background: rgba(61,127,255,0.5); }
+  .sl-bar.student-bar { background: rgba(0,200,160,0.5); }
+
+  .sl-pct {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    width: 36px;
+  }
+
+  .sl-legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+
+  .sl-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .sl-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+  }
+
+  /* QUIZ */
+  .quiz-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2rem;
+    margin: 2rem 0;
+  }
+
+  .quiz-q {
+    font-size: 15px;
+    color: var(--text-bright);
+    margin-bottom: 1.2rem;
+    font-weight: 500;
+  }
+
+  .quiz-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .quiz-opt {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.8rem 1rem;
+    cursor: pointer;
+    font-size: 13.5px;
+    color: var(--text);
+    transition: all 0.15s;
+    text-align: left;
+  }
+
+  .quiz-opt:hover:not(.locked) {
+    border-color: var(--accent);
+    color: var(--text-bright);
+  }
+
+  .quiz-opt.correct {
+    border-color: var(--accent);
+    background: rgba(0,200,160,0.1);
+    color: var(--accent);
+  }
+
+  .quiz-opt.wrong {
+    border-color: var(--accent3);
+    background: rgba(255,107,61,0.08);
+    color: var(--accent3);
+  }
+
+  .quiz-feedback {
+    margin-top: 1rem;
+    padding: 0.8rem 1rem;
+    border-radius: 4px;
+    font-size: 13.5px;
+    display: none;
+  }
+
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.ok { background: rgba(0,200,160,0.08); color: var(--accent); border: 1px solid rgba(0,200,160,0.2); }
+  .quiz-feedback.nope { background: rgba(255,107,61,0.08); color: var(--accent3); border: 1px solid rgba(255,107,61,0.2); }
+
+  /* SUMMARY CARD */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .sum-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1.2rem;
+  }
+
+  .sum-card .sum-icon { font-size: 20px; margin-bottom: 0.5rem; }
+  .sum-card .sum-title { font-size: 13px; font-weight: 500; color: var(--text-bright); margin-bottom: 0.3rem; }
+  .sum-card .sum-text { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; }
+
+  /* GLOS */
+  .glossary {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .glos-item {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .glos-item:last-child { border-bottom: none; }
+
+  .glos-term {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    padding: 0.9rem 1rem;
+    background: var(--surface2);
+    border-right: 1px solid var(--border);
+  }
+
+  .glos-def {
+    padding: 0.9rem 1rem;
+    font-size: 13px;
+    color: var(--text-muted);
+    background: var(--surface);
+  }
+
+  /* PROGRESS */
+  .progress-bar-outer {
+    position: fixed;
+    top: 52px; left: 0; right: 0;
+    height: 2px;
+    background: var(--border);
+    z-index: 99;
+  }
+
+  .progress-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+
+  /* CHIP */
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 0.2rem 0.55rem;
+    border-radius: 3px;
+    margin: 0 0.15rem;
+    vertical-align: middle;
+  }
+
+  .chip.green { background: rgba(0,200,160,0.12); color: var(--accent); border: 1px solid rgba(0,200,160,0.2); }
+  .chip.blue  { background: rgba(61,127,255,0.12); color: var(--accent2); border: 1px solid rgba(61,127,255,0.2); }
+  .chip.red   { background: rgba(255,107,61,0.12); color: var(--accent3); border: 1px solid rgba(255,107,61,0.2); }
+
+  /* DIVIDER */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2.5rem 0;
+  }
+
+  /* TECHNIQUE CARDS */
+  .tech-grid { display: flex; flex-direction: column; gap: 1.5rem; margin: 1.5rem 0; }
+
+  .tech-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .tech-card:hover { border-color: rgba(255,255,255,0.1); }
+
+  .tech-header {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 1rem 1.2rem; cursor: pointer; user-select: none;
+    background: var(--surface2);
+  }
+  .tech-header:hover { background: rgba(255,255,255,0.03); }
+
+  .tech-icon {
+    width: 34px; height: 34px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .tech-header-text { flex: 1; }
+  .tech-name { font-size: 14px; font-weight: 500; color: var(--text-bright); margin-bottom: 2px; }
+  .tech-tagline { font-family: var(--mono); font-size: 10px; color: var(--text-muted); letter-spacing: 0.06em; }
+  .tech-badges { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+  .tech-toggle { font-family: var(--mono); font-size: 14px; color: var(--text-muted); transition: transform 0.25s; flex-shrink: 0; }
+  .tech-toggle.open { transform: rotate(180deg); }
+
+  .tech-body { display: none; padding: 1.2rem; border-top: 1px solid var(--border); }
+  .tech-body.open { display: block; }
+  .tech-body p { font-size: 13.5px; margin-bottom: 0.8rem; }
+  .tech-body p:last-child { margin-bottom: 0; }
+
+  .tech-metrics {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1px; background: var(--border);
+    border: 1px solid var(--border); border-radius: 4px;
+    overflow: hidden; margin: 1rem 0;
+  }
+  .tm-cell { background: var(--surface2); padding: 0.6rem 0.7rem; }
+  .tm-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.3rem; }
+  .tm-val { font-size: 12.5px; font-weight: 500; }
+  .tm-val.good { color: var(--accent); }
+  .tm-val.mid  { color: var(--warn); }
+  .tm-val.bad  { color: var(--accent3); }
+  .tm-val.neutral { color: var(--text); }
+
+  .tech-ran-note {
+    background: rgba(0,200,160,0.04); border: 1px solid rgba(0,200,160,0.15);
+    border-radius: 4px; padding: 0.8rem 1rem;
+    font-size: 12.5px; color: var(--text-muted); margin-top: 0.8rem;
+  }
+  .tech-ran-note .ran-label {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 0.3rem;
+  }
+
+  /* MEGA TABLE */
+  .mega-table {
+    width: 100%; border-collapse: collapse; font-size: 12.5px;
+    margin: 1.5rem 0; border: 1px solid var(--border);
+    border-radius: 6px; overflow: hidden;
+    display: block; overflow-x: auto;
+  }
+  .mega-table th {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-muted); background: var(--surface2);
+    padding: 0.7rem 0.8rem; text-align: left;
+    border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .mega-table td {
+    padding: 0.75rem 0.8rem; border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border); vertical-align: top;
+    background: var(--surface); color: var(--text-muted);
+  }
+  .mega-table tr:last-child td { border-bottom: none; }
+  .mega-table th:last-child, .mega-table td:last-child { border-right: none; }
+  .mega-table tr:hover td { background: var(--surface2); }
+  .mega-table td:first-child {
+    font-weight: 500; color: var(--text-bright); font-size: 13px;
+    background: var(--surface2); white-space: nowrap;
+  }
+  .dot-good::before { content: '●'; color: var(--accent); margin-right: 4px; }
+  .dot-mid::before  { content: '◑'; color: var(--warn); margin-right: 4px; }
+  .dot-bad::before  { content: '○'; color: var(--accent3); margin-right: 4px; }
+
+  /* DECISION TREE */
+  .decision-tree {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 1.5rem; margin: 1.5rem 0;
+  }
+  .dt-title {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 1.2rem;
+  }
+  .dt-q {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0.7rem 1rem;
+    font-size: 13px; color: var(--text-bright); margin-bottom: 0.6rem;
+  }
+  .dt-q .dt-qlabel {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;
+  }
+  .dt-branches {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;
+    padding-left: 1.2rem; border-left: 2px solid var(--border);
+    margin-left: 0.5rem; margin-bottom: 0.8rem;
+  }
+  .dt-branch {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0.6rem 0.8rem;
+  }
+  .dt-branch .branch-cond {
+    font-family: var(--mono); font-size: 9px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.25rem;
+  }
+  .dt-branch .branch-ans { font-size: 12.5px; font-weight: 500; }
+  .dt-branch.yes .branch-cond { color: var(--accent); }
+  .dt-branch.no  .branch-cond { color: var(--accent3); }
+  .dt-branch.yes .branch-ans  { color: var(--accent); }
+  .dt-branch.no  .branch-ans  { color: var(--text); }
+  .dt-indent { padding-left: 1.5rem; border-left: 2px solid var(--border); margin-left: 0.5rem; }
+
+  /* ===================== PIPELINE WORKFLOW ===================== */
+  .pipeline-wrap {
+    position: relative;
+    margin: 2rem 0;
+  }
+
+  /* Stepper nav */
+  .pipe-nav {
+    display: flex;
+    gap: 0;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .pipe-nav-btn {
+    flex: 1;
+    background: var(--surface2);
+    border: none;
+    border-right: 1px solid var(--border);
+    padding: 0.55rem 0.3rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    transition: background 0.2s;
+    position: relative;
+  }
+  .pipe-nav-btn:last-child { border-right: none; }
+  .pipe-nav-btn:hover { background: rgba(255,255,255,0.04); }
+
+  .pipe-nav-btn.active {
+    background: var(--surface);
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
+
+  .pipe-nav-num {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+  }
+
+  .pipe-nav-btn.active .pipe-nav-num { color: var(--accent); }
+
+  .pipe-nav-label {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.3;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .pipe-nav-btn.active .pipe-nav-label { color: var(--text-bright); }
+
+  .pipe-nav-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.2s;
+  }
+
+  .pipe-nav-btn.active .pipe-nav-dot,
+  .pipe-nav-btn.done .pipe-nav-dot { background: var(--accent); }
+
+  /* Step panel */
+  .pipe-step {
+    display: none;
+    animation: stepIn 0.35s ease forwards;
+  }
+
+  .pipe-step.active { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+  @keyframes stepIn {
+    from { opacity: 0; transform: translateX(18px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .pipe-step.reverse { animation: stepBack 0.35s ease forwards; }
+
+  @keyframes stepBack {
+    from { opacity: 0; transform: translateX(-18px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* Step left panel */
+  .step-left {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .step-num-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .step-title-wrap {}
+
+  .step-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-bright);
+    line-height: 1.2;
+  }
+
+  .step-subtitle {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+
+  .step-body {
+    font-size: 13.5px;
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  .step-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+  }
+
+  .step-tag {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    letter-spacing: 0.06em;
+  }
+
+  /* Step right panel — visual */
+  .step-right {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    min-height: 280px;
+  }
+
+  .step-vis-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+  }
+
+  /* Data audit checklist */
+  .audit-list { display: flex; flex-direction: column; gap: 0.4rem; }
+  .audit-item {
+    display: flex; align-items: center; gap: 0.6rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0.5rem 0.7rem;
+    font-size: 12.5px; color: var(--text-muted);
+    animation: auditIn 0.4s ease both;
+  }
+  .audit-item .ai-icon { font-size: 13px; flex-shrink: 0; }
+  .audit-item .ai-label { flex: 1; }
+  .audit-item .ai-status {
+    font-family: var(--mono); font-size: 10px;
+    padding: 0.15rem 0.4rem; border-radius: 2px;
+  }
+  .ai-status.ok  { background: rgba(0,200,160,0.1); color: var(--accent); }
+  .ai-status.warn { background: rgba(245,197,66,0.1); color: var(--warn); }
+  .ai-status.bad  { background: rgba(255,107,61,0.1); color: var(--accent3); }
+
+  @keyframes auditIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* SSL diagram */
+  .ssl-flow { display: flex; flex-direction: column; gap: 0.5rem; }
+  .ssl-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 12px; color: var(--text-muted);
+  }
+  .ssl-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; padding: 0.4rem 0.6rem;
+    font-family: var(--mono); font-size: 10.5px;
+    flex-shrink: 0;
+  }
+  .ssl-mask {
+    background: rgba(61,127,255,0.15); border-color: rgba(61,127,255,0.3);
+    color: var(--accent2);
+  }
+  .ssl-recon {
+    background: rgba(0,200,160,0.12); border-color: rgba(0,200,160,0.3);
+    color: var(--accent);
+  }
+  .ssl-arrow { color: var(--text-muted); font-size: 13px; flex-shrink: 0; }
+
+  /* Training loss animation */
+  .loss-chart { position: relative; height: 80px; margin-top: 0.3rem; }
+  .loss-svg { width: 100%; height: 100%; }
+
+  /* Label sources */
+  .label-sources { display: flex; flex-direction: column; gap: 0.5rem; }
+  .ls-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0.5rem 0.7rem;
+    display: flex; align-items: center; gap: 0.6rem;
+    font-size: 12px; color: var(--text-muted);
+  }
+  .ls-icon { font-size: 14px; flex-shrink: 0; }
+  .ls-text {}
+  .ls-text strong { color: var(--text-bright); font-size: 12.5px; display: block; margin-bottom: 1px; }
+
+  /* Calibration meter */
+  .cal-meter { display: flex; flex-direction: column; gap: 0.5rem; }
+  .cal-row { display: flex; align-items: center; gap: 0.6rem; }
+  .cal-label { font-family: var(--mono); font-size: 10px; color: var(--text-muted); width: 90px; flex-shrink: 0; }
+  .cal-bar-wrap { flex: 1; height: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+  .cal-bar { height: 100%; border-radius: 2px; display: flex; align-items: center; padding-left: 5px; font-family: var(--mono); font-size: 9px; transition: width 1.5s cubic-bezier(0.4,0,0.2,1); }
+  .cal-bar.acc  { background: rgba(0,200,160,0.3); color: var(--accent); width: 0; }
+  .cal-bar.conf { background: rgba(61,127,255,0.3); color: var(--accent2); width: 0; }
+  .cal-bar.gen  { background: rgba(245,197,66,0.2); color: var(--warn); width: 0; }
+
+  /* Distill visual */
+  .distil-visual { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
+  .dv-row { display: flex; align-items: center; gap: 0.6rem; width: 100%; }
+  .dv-box {
+    border-radius: 4px; padding: 0.5rem 0.7rem;
+    font-family: var(--mono); font-size: 10px;
+    display: flex; align-items: center; gap: 0.4rem;
+    transition: all 0.5s ease;
+  }
+  .dv-teacher { background: rgba(61,127,255,0.12); border: 1px solid rgba(61,127,255,0.3); color: var(--accent2); flex: 2; }
+  .dv-student { background: rgba(0,200,160,0.1); border: 1px solid rgba(0,200,160,0.3); color: var(--accent); flex: 1; }
+  .dv-arrow-wrap { display: flex; justify-content: center; }
+  .dv-arrow { font-size: 18px; color: var(--text-muted); animation: pulse 1.5s ease infinite; }
+  @keyframes pulse { 0%,100% { opacity: 0.4; transform: translateY(-2px); } 50% { opacity: 1; transform: translateY(2px); } }
+  .soft-flow {
+    display: flex; gap: 0.3rem; align-items: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; padding: 0.35rem 0.6rem;
+    font-family: var(--mono); font-size: 9.5px; color: var(--text-muted);
+    width: 100%;
+  }
+  .sf-chip { padding: 0.1rem 0.3rem; border-radius: 2px; }
+
+  /* Quant visual */
+  .quant-rows { display: flex; flex-direction: column; gap: 0.6rem; }
+  .qr-row { display: flex; align-items: center; gap: 0.6rem; }
+  .qr-label { font-family: var(--mono); font-size: 10px; color: var(--text-muted); width: 50px; flex-shrink: 0; }
+  .qr-bits { display: flex; gap: 2px; }
+  .qr-bit {
+    width: 12px; height: 20px; border-radius: 2px; border: 1px solid;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 6px;
+    animation: bitIn 0.3s ease both;
+  }
+  .qr-bit.on  { background: rgba(0,200,160,0.2); border-color: rgba(0,200,160,0.4); color: var(--accent); }
+  .qr-bit.off { background: rgba(30,40,64,0.5); border-color: var(--border); color: var(--text-muted); }
+  .qr-bit.grayed { background: rgba(255,107,61,0.06); border-color: rgba(255,107,61,0.2); color: rgba(255,107,61,0.3); }
+  @keyframes bitIn { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: none; } }
+  .qr-stat { font-family: var(--mono); font-size: 10px; margin-left: 4px; }
+
+  /* Deploy map */
+  .deploy-stack { display: flex; flex-direction: column; gap: 2px; }
+  .ds-layer {
+    border-radius: 3px; padding: 0.45rem 0.8rem;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px;
+    animation: layerIn 0.4s ease both;
+  }
+  @keyframes layerIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+  .ds-layer .dl-name { font-weight: 500; }
+  .ds-layer .dl-model { font-family: var(--mono); font-size: 9.5px; }
+  .ds-layer.l-nonrt { background: rgba(61,127,255,0.08); border: 1px solid rgba(61,127,255,0.2); color: var(--accent2); }
+  .ds-layer.l-nearrt { background: rgba(61,127,255,0.05); border: 1px solid rgba(61,127,255,0.15); color: var(--accent2); }
+  .ds-layer.l-cu { background: rgba(0,200,160,0.07); border: 1px solid rgba(0,200,160,0.2); color: var(--accent); }
+  .ds-layer.l-du { background: rgba(0,200,160,0.1); border: 1px solid rgba(0,200,160,0.3); color: var(--accent); }
+  .ds-layer.l-ru { background: rgba(0,200,160,0.14); border: 1px solid rgba(0,200,160,0.4); color: var(--accent); }
+
+  /* Nav controls */
+  .pipe-controls {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 1.5rem;
+  }
+  .pipe-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0.5rem 1.2rem;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+    color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+  }
+  .pipe-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .pipe-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+  .pipe-btn.primary {
+    background: rgba(0,200,160,0.1); border-color: rgba(0,200,160,0.3);
+    color: var(--accent);
+  }
+  .pipe-btn.primary:hover { background: rgba(0,200,160,0.2); }
+
+  .pipe-progress-text {
+    font-family: var(--mono); font-size: 10px; color: var(--text-muted);
+  }
+
+  /* Branch path indicator */
+  .branch-selector {
+    display: flex; gap: 0.6rem; margin: 0.6rem 0;
+  }
+  .branch-opt {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0.5rem 0.7rem; cursor: pointer;
+    font-size: 12px; color: var(--text-muted); transition: all 0.15s;
+    text-align: center;
+  }
+  .branch-opt:hover { border-color: var(--accent); }
+  .branch-opt.selected { border-color: var(--accent); background: rgba(0,200,160,0.08); color: var(--accent); }
+  .branch-opt .bo-label { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+  .branch-opt .bo-desc { font-size: 11.5px; }
+
+  @media (max-width: 640px) {
+    .pipe-step.active { grid-template-columns: 1fr; }
+    .pipe-nav-label { display: none; }
+  }
+
+  /* SCROLL ANIMATE */
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  @media (max-width: 600px) {
+    .flow-two { grid-template-columns: 1fr; }
+    .k-types { grid-template-columns: 1fr; }
+    .summary-grid { grid-template-columns: 1fr; }
+    .uc-row { grid-template-columns: 1fr; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .glos-item { grid-template-columns: 1fr; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar-outer">
+  <div class="progress-bar-inner" id="progress"></div>
+</div>
+
+<nav>
+  <div class="nav-brand">AI-RAN // Model Distillation</div>
+  <ul class="nav-links">
+    <li><a href="#problem">The Problem</a></li>
+    <li><a href="#what">What Is It</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#ran">In RAN</a></li>
+    <li><a href="#compare">Alternatives</a></li>
+    <li><a href="#pipeline">Pipeline</a></li>
+    <li><a href="#quiz">Check In</a></li>
+  </ul>
+</nav>
+
+<main>
+
+  <!-- HERO -->
+  <div class="hero reveal">
+    <div class="hero-tag">Field Guide for RAN Engineers</div>
+    <h1>Model Distillation — <em>Teaching a Smaller AI to Think Fast</em></h1>
+    <p class="hero-sub">
+      You're an RF engineer. You know 5G has tight real-time constraints. Now AI is entering the RAN — and it has a latency problem. This guide explains how <strong>knowledge distillation</strong> solves it, without assuming any AI background.
+    </p>
+  </div>
+
+  <!-- SECTION 1: THE PROBLEM -->
+  <section id="problem" class="reveal">
+    <div class="section-num">01 / The Problem</div>
+    <h2>AI is smart. But is it fast enough for RAN?</h2>
+
+    <p>
+      Real-time RAN functions run on strict time budgets. The 5G frame is 10 ms, slots are 0.5–1 ms, and L1 functions like
+      channel estimation and beam management have budgets in the range of <span class="chip blue">50–500 µs</span>.
+      These aren't soft guidelines — miss them and you drop throughput, blow HARQ timing, or lose the beam.
+    </p>
+
+    <p>
+      AI models — especially large neural networks — are powerful pattern recognizers. They can learn channel behavior,
+      predict interference, optimize beams. But a large model takes <span class="chip red">milliseconds to seconds</span>
+      to run inference. That's orders of magnitude too slow for the L1 pipeline.
+    </p>
+
+    <div class="diagram-wrap reveal">
+      <div class="diagram-title">// Time budget vs. AI inference — the mismatch</div>
+      <div class="time-budget">
+        <div class="tb-row">
+          <div class="tb-label">10ms radio frame</div>
+          <div class="tb-bar-wrap"><div class="tb-bar frame">10 ms — full frame</div></div>
+        </div>
+        <div class="tb-row">
+          <div class="tb-label">L1 PHY budget</div>
+          <div class="tb-bar-wrap"><div class="tb-bar phy">~100–300 µs</div></div>
+        </div>
+        <div class="tb-row">
+          <div class="tb-label">L2 MAC budget</div>
+          <div class="tb-bar-wrap"><div class="tb-bar mac">~1–2 ms</div></div>
+        </div>
+        <div class="tb-row">
+          <div class="tb-label">Large AI model</div>
+          <div class="tb-bar-wrap"><div class="tb-bar ai-big">5–50 ms inference ⚠</div></div>
+        </div>
+        <div class="tb-row">
+          <div class="tb-label">Distilled AI model</div>
+          <div class="tb-bar-wrap"><div class="tb-bar ai-small">&lt;200 µs ✓</div></div>
+        </div>
+      </div>
+      <div class="tb-caption">// Bars are proportional to log-scale time. Distilled models can fit inside L1/L2 slot budgets.</div>
+    </div>
+
+    <div class="problem-box reveal">
+      <div class="label">⚠ Core Tension</div>
+      <p>
+        Large AI models understand RAN complexity well — but are too slow. Simple models are fast — but too dumb.
+        <strong>Distillation is the engineering trick that gets you both.</strong>
+      </p>
+    </div>
+  </section>
+
+  <!-- SECTION 2: WHAT IS DISTILLATION -->
+  <section id="what" class="reveal">
+    <div class="section-num">02 / What Is It</div>
+    <h2>The big model teaches the small one — and the small one learns to think, not just memorize.</h2>
+
+    <p>
+      Knowledge distillation is a training technique where a large, accurate neural network (the <strong>teacher</strong>)
+      is used to train a smaller, faster network (the <strong>student</strong>). But it's not just about copying answers —
+      the student learns the teacher's <em>reasoning patterns</em>.
+    </p>
+
+    <div class="analogy reveal">
+      <div class="analogy-label">📡 RF Engineer Analogy</div>
+      <p>
+        Think of it like channel modeling. A full 3D ray tracer (teacher) takes hours to simulate a city block — it captures every reflection, diffraction, scattering. A TR 38.901 statistical model (student) runs in microseconds and still captures the right delay spread, angular spread, and path loss behavior — because it was calibrated <em>against</em> the ray tracer. The student inherited the physics intuition without the computational cost.
+      </p>
+    </div>
+
+    <h3>The Three Players</h3>
+
+    <div class="diagram-wrap reveal">
+      <div class="diagram-title">// Distillation pipeline overview</div>
+      <div class="distil-flow">
+        <div class="flow-row">
+          <div class="flow-node data">
+            <div class="node-tag">Input</div>
+            <div class="node-title">Training Data</div>
+            <div class="node-desc">Real RAN measurements, simulation outputs, drive test data, or labeled RF observations</div>
+          </div>
+        </div>
+
+        <div class="flow-arrow">↓ <span>fed into</span></div>
+
+        <div class="flow-row">
+          <div class="flow-node teacher">
+            <div class="node-tag">Teacher Model</div>
+            <div class="node-title">Large Neural Network</div>
+            <div class="node-desc">Hundreds of layers. High accuracy. Understands complex RAN behavior — interference patterns, multipath, beam interactions. Trained offline, runs slowly.</div>
+          </div>
+        </div>
+
+        <div class="flow-arrow">↓ <span>produces soft labels + intermediate representations</span></div>
+
+        <div class="flow-two">
+          <div class="flow-node teacher">
+            <div class="node-tag">Soft Labels</div>
+            <div class="node-title">Probability distributions</div>
+            <div class="node-desc">Instead of "beam #3 is best," the teacher says "beam #3: 72%, beam #2: 20%, beam #1: 8%" — rich information about uncertainty and relationships.</div>
+          </div>
+          <div class="flow-node data">
+            <div class="node-tag">Hint Layers</div>
+            <div class="node-title">Intermediate features</div>
+            <div class="node-desc">Internal representations from middle layers — how the teacher "thinks about" a problem, not just its final answer.</div>
+          </div>
+        </div>
+
+        <div class="flow-arrow">↓ <span>used to train</span></div>
+
+        <div class="flow-row">
+          <div class="flow-node student">
+            <div class="node-tag">Student Model</div>
+            <div class="node-title">Compact Neural Network</div>
+            <div class="node-desc">5–20× fewer parameters. Runs in microseconds on embedded hardware. Accuracy close to teacher — inherits the "understanding," not just the answers.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Why Not Just Train a Small Model Directly?</h3>
+    <p>
+      You could train a compact model from scratch on raw data. The problem is that raw labels are often <strong>hard and brittle</strong> — "beam 3 is correct" gives the student no information about how close beam 2 was. The teacher's soft probability output is informationally richer and helps the student generalize better with fewer parameters.
+    </p>
+    <p>
+      It's the difference between teaching with a multiple-choice answer key vs. teaching with a mentor who explains
+      <em>why</em> an answer is right and <em>how close</em> the other options were.
+    </p>
+  </section>
+
+  <!-- SECTION 3: HOW IT WORKS -->
+  <section id="how" class="reveal">
+    <div class="section-num">03 / How It Works</div>
+    <h2>The mechanics — without the math</h2>
+
+    <h3>Step 1 — Soft Labels vs. Hard Labels</h3>
+    <p>
+      In classical training, you give a model hard labels: the correct answer. In distillation, you also give it the
+      teacher's <strong>soft labels</strong> — a probability distribution over all possible answers.
+    </p>
+
+    <div class="soft-label-demo reveal">
+      <div class="sl-title">// Beam selection output — hard label vs. teacher soft label vs. student learning</div>
+
+      <div class="sl-row">
+        <div class="sl-class">Beam #3 (correct)</div>
+        <div class="sl-bars">
+          <div class="sl-bar teacher-bar" style="width: 160px;"></div>
+          <div class="sl-pct" style="color: var(--accent2);">73%</div>
+          <div class="sl-bar student-bar" style="width: 150px;"></div>
+          <div class="sl-pct" style="color: var(--accent);">69%</div>
+        </div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-class">Beam #2</div>
+        <div class="sl-bars">
+          <div class="sl-bar teacher-bar" style="width: 55px;"></div>
+          <div class="sl-pct" style="color: var(--accent2);">22%</div>
+          <div class="sl-bar student-bar" style="width: 50px;"></div>
+          <div class="sl-pct" style="color: var(--accent);">20%</div>
+        </div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-class">Beam #1</div>
+        <div class="sl-bars">
+          <div class="sl-bar teacher-bar" style="width: 12px;"></div>
+          <div class="sl-pct" style="color: var(--accent2);">5%</div>
+          <div class="sl-bar student-bar" style="width: 15px;"></div>
+          <div class="sl-pct" style="color: var(--accent);">6%</div>
+        </div>
+      </div>
+      <div class="sl-row">
+        <div class="sl-class">Beam #4</div>
+        <div class="sl-bars">
+          <div class="sl-bar teacher-bar" style="width: 0px;"></div>
+          <div class="sl-pct" style="color: var(--accent2);">&lt;1%</div>
+          <div class="sl-bar student-bar" style="width: 0px;"></div>
+          <div class="sl-pct" style="color: var(--accent);">&lt;1%</div>
+        </div>
+      </div>
+
+      <div class="sl-legend">
+        <div class="sl-legend-item"><div class="sl-dot" style="background: rgba(61,127,255,0.5);"></div> Teacher output</div>
+        <div class="sl-legend-item"><div class="sl-dot" style="background: rgba(0,200,160,0.5);"></div> Student learning to match</div>
+      </div>
+      <div style="margin-top: 0.8rem; font-size: 12px; color: var(--text-muted);">
+        Hard label would just say "Beam #3". Soft labels tell the student that Beam #2 is also reasonable — capturing the physics of a near-optimal adjacent beam.
+      </div>
+    </div>
+
+    <h3>Step 2 — The Temperature Parameter</h3>
+    <p>
+      Neural networks normally output very "confident" distributions (e.g. 99.9% on one class). Distillation uses a
+      <strong>temperature parameter T</strong> to soften these: at T=4, the probabilities spread out more, and the
+      student gets more signal about relative similarities between options.
+    </p>
+    <div class="analogy reveal">
+      <div class="analogy-label">📡 Another RAN analogy</div>
+      <p>
+        Temperature scaling is like adjusting AGC gain before sampling. Too high gain (low temperature) and you clip the signal — you lose nuance. The right gain (temperature) keeps all the information present for the student to learn from.
+      </p>
+    </div>
+
+    <h3>Step 3 — What the Student Learns</h3>
+    <div class="k-types reveal">
+      <div class="k-card">
+        <div class="k-icon">🧠</div>
+        <div class="k-title">Response-based</div>
+        <div class="k-desc">Student mimics the teacher's final output probabilities. The simplest form of distillation. Good for tasks like beam selection, MCS prediction.</div>
+      </div>
+      <div class="k-card">
+        <div class="k-icon">🔬</div>
+        <div class="k-title">Feature-based (Hints)</div>
+        <div class="k-desc">Student also tries to match intermediate layer activations — how the teacher "processes" data mid-way. Produces better generalization on unseen channel conditions.</div>
+      </div>
+      <div class="k-card">
+        <div class="k-icon">🔗</div>
+        <div class="k-title">Relation-based</div>
+        <div class="k-desc">Student learns <em>relationships</em> between data samples — e.g. how similar two channel conditions are. Useful for mobility scenarios and handover decisions.</div>
+      </div>
+      <div class="k-card">
+        <div class="k-icon">🗜️</div>
+        <div class="k-title">Structured Pruning</div>
+        <div class="k-desc">Combined with distillation — teacher's architecture is systematically compressed by removing low-importance layers or neurons, then retrained via distillation. Common in O-RAN AI pipelines.</div>
+      </div>
+    </div>
+
+    <h3>Size & Speed Comparison</h3>
+    <div class="compare-grid reveal">
+      <div class="cg-cell header"></div>
+      <div class="cg-cell header">Teacher Model</div>
+      <div class="cg-cell header">Student Model</div>
+
+      <div class="cg-cell">Parameters</div>
+      <div class="cg-cell"><span class="bad">10M – 1B+</span></div>
+      <div class="cg-cell"><span class="good">100K – 5M</span></div>
+
+      <div class="cg-cell">Inference latency</div>
+      <div class="cg-cell"><span class="bad">5–50 ms</span></div>
+      <div class="cg-cell"><span class="good">&lt;0.2 ms</span></div>
+
+      <div class="cg-cell">Accuracy vs. teacher</div>
+      <div class="cg-cell"><span class="good">100% (baseline)</span></div>
+      <div class="cg-cell"><span class="mid">90–97% typical</span></div>
+
+      <div class="cg-cell">Where it runs</div>
+      <div class="cg-cell"><span class="bad">GPU server / cloud</span></div>
+      <div class="cg-cell"><span class="good">L1/L2 accelerator, DU</span></div>
+
+      <div class="cg-cell">RAN deployment</div>
+      <div class="cg-cell"><span class="bad">Offline only</span></div>
+      <div class="cg-cell"><span class="good">Real-time inline</span></div>
+    </div>
+  </section>
+
+  <!-- SECTION 4: DISTILLATION IN RAN -->
+  <section id="ran" class="reveal">
+    <div class="section-num">04 / In the RAN</div>
+    <h2>Where distillation fits in 5G/6G network functions</h2>
+
+    <p>
+      Different RAN functions have different time budgets and different AI complexity needs. Distillation is not a one-size approach — the depth of compression depends on where in the stack you're deploying.
+    </p>
+
+    <div class="use-cases reveal">
+      <div class="uc-row header">
+        <div class="uc-cell">RAN Function</div>
+        <div class="uc-cell">Budget</div>
+        <div class="uc-cell">Distillation Role</div>
+      </div>
+
+      <div class="uc-row">
+        <div class="uc-cell">
+          <div class="func-name">Beam Management</div>
+          <div class="func-sub">L1 / gNB-DU</div>
+          <div class="budget-chip tight">~100 µs</div>
+        </div>
+        <div class="uc-cell">
+          <div class="budget-chip tight">very tight</div>
+        </div>
+        <div class="uc-cell" style="font-size:12.5px; color: var(--text-muted); padding-top: 0.85rem;">
+          Large transformer trained offline predicts optimal beams from SSB measurements. Distilled to tiny MLP (few thousand weights) running inline on L1 accelerator. Cuts beam sweep overhead.
+        </div>
+      </div>
+
+      <div class="uc-row">
+        <div class="uc-cell">
+          <div class="func-name">Channel Estimation</div>
+          <div class="func-sub">L1 / PDSCH decode</div>
+          <div class="budget-chip tight">~50–200 µs</div>
+        </div>
+        <div class="uc-cell">
+          <div class="budget-chip tight">very tight</div>
+        </div>
+        <div class="uc-cell" style="font-size:12.5px; color: var(--text-muted); padding-top: 0.85rem;">
+          Deep CNN teacher trained on Sionna/ray-trace data. Student CNN with 10× fewer layers runs on FPGA or DSP. Matches MMSE accuracy at near-interpolation speed.
+        </div>
+      </div>
+
+      <div class="uc-row">
+        <div class="uc-cell">
+          <div class="func-name">Link Adaptation / MCS</div>
+          <div class="func-sub">L2 / MAC scheduler</div>
+          <div class="budget-chip med">~1–2 ms</div>
+        </div>
+        <div class="uc-cell">
+          <div class="budget-chip med">moderate</div>
+        </div>
+        <div class="uc-cell" style="font-size:12.5px; color: var(--text-muted); padding-top: 0.85rem;">
+          Teacher LSTM trained on CQI history and BLER feedback. Distilled model predicts optimal MCS per UE in scheduler cycle without outer-loop overhead.
+        </div>
+      </div>
+
+      <div class="uc-row">
+        <div class="uc-cell">
+          <div class="func-name">Handover Prediction</div>
+          <div class="func-sub">L3 / RRC</div>
+          <div class="budget-chip relax">10–100 ms</div>
+        </div>
+        <div class="uc-cell">
+          <div class="budget-chip relax">relaxed</div>
+        </div>
+        <div class="uc-cell" style="font-size:12.5px; color: var(--text-muted); padding-top: 0.85rem;">
+          Graph neural network (GNN) teacher trained on mobility traces. Distilled GNN with fewer message-passing layers runs in RRC context, predicts HO triggers before RSRP drops.
+        </div>
+      </div>
+
+      <div class="uc-row">
+        <div class="uc-cell">
+          <div class="func-name">Interference Coordination</div>
+          <div class="func-sub">O-RAN / Near-RT RIC</div>
+          <div class="budget-chip relax">10 ms – 1 s</div>
+        </div>
+        <div class="uc-cell">
+          <div class="budget-chip relax">relaxed</div>
+        </div>
+        <div class="uc-cell" style="font-size:12.5px; color: var(--text-muted); padding-top: 0.85rem;">
+          Full RL agent (teacher) trained in simulation controls resource partitioning. Distilled policy network serves as xApp, meeting near-RT RIC loop constraints of &lt;10 ms.
+        </div>
+      </div>
+    </div>
+
+    <h3>Where in the O-RAN Split Does It Live?</h3>
+    <p>
+      The O-RAN functional split matters a lot for where a distilled model runs:
+    </p>
+
+    <div class="diagram-wrap reveal">
+      <div class="diagram-title">// O-RAN deployment — teacher trains centrally, student runs locally</div>
+      <div style="display: flex; flex-direction: column; gap: 1px; border: 1px solid var(--border); border-radius: 4px; overflow: hidden;">
+        <div style="display: grid; grid-template-columns: 140px 1fr; gap: 0;">
+          <div style="padding: 0.8rem 1rem; background: rgba(61,127,255,0.08); border-right: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--accent2);">Non-RT RIC</div>
+          <div style="padding: 0.8rem 1rem; font-size: 13px; color: var(--text-muted); background: var(--surface);">Teacher training happens here. Large models, GPU access, historical data. No latency constraint.</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 140px 1fr; gap: 0; border-top: 1px solid var(--border);">
+          <div style="padding: 0.8rem 1rem; background: rgba(61,127,255,0.05); border-right: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--accent2);">Near-RT RIC</div>
+          <div style="padding: 0.8rem 1rem; font-size: 13px; color: var(--text-muted); background: var(--surface);">Mid-size distilled models as xApps / rApps. Interference, HO prediction. 10 ms – 1 s.</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 140px 1fr; gap: 0; border-top: 1px solid var(--border);">
+          <div style="padding: 0.8rem 1rem; background: rgba(0,200,160,0.06); border-right: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--accent);">CU / DU</div>
+          <div style="padding: 0.8rem 1rem; font-size: 13px; color: var(--text-muted); background: var(--surface);">Compact distilled students run inline. Beam management, link adaptation. Sub-ms budgets.</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 140px 1fr; gap: 0; border-top: 1px solid var(--border);">
+          <div style="padding: 0.8rem 1rem; background: rgba(0,200,160,0.03); border-right: 1px solid var(--border); font-family: var(--mono); font-size: 11px; color: var(--accent);">RU / L1</div>
+          <div style="padding: 0.8rem 1rem; font-size: 13px; color: var(--text-muted); background: var(--surface);">Most aggressive distillation — ultra-tiny models on FPGA/NPU. Channel estimation, symbol detection. ~50–100 µs.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 5: ALTERNATIVES COMPARISON -->
+  <section id="compare" class="reveal">
+    <div class="section-num">05 / Alternatives &amp; Comparisons</div>
+    <h2>Other ways to make AI fast enough for RAN</h2>
+
+    <p>
+      Distillation isn't the only path to real-time AI inference. There are five major techniques — and in practice,
+      most deployed AI-RAN systems <strong>combine two or three of them</strong>. Understanding what each does helps you
+      reason about the engineering tradeoffs your team will face.
+    </p>
+
+    <div class="tech-grid reveal">
+
+      <!-- 1. QUANTIZATION -->
+      <div class="tech-card">
+        <div class="tech-header" onclick="toggleTech(this)">
+          <div class="tech-icon" style="background: rgba(61,127,255,0.12);">🔢</div>
+          <div class="tech-header-text">
+            <div class="tech-name">Quantization</div>
+            <div class="tech-tagline">Reduce numerical precision of weights — FP32 → INT8 → INT4</div>
+          </div>
+          <div class="tech-badges">
+            <span class="chip blue">memory ↓</span>
+            <span class="chip green">latency ↓</span>
+          </div>
+          <div class="tech-toggle">▼</div>
+        </div>
+        <div class="tech-body">
+          <p>
+            Neural network weights are stored as 32-bit floating-point numbers (FP32) by default. Quantization converts them to lower precision — INT8 (8-bit integer) or even INT4. The model architecture stays the same; only the numerical format of its numbers changes.
+          </p>
+          <p>
+            Think of it like ADC bit depth in your radio chain. Going from 16-bit to 8-bit ADC halves your memory and can double your throughput — with some noise floor penalty. Same idea here.
+          </p>
+          <div class="tech-metrics">
+            <div class="tm-cell"><div class="tm-label">Size reduction</div><div class="tm-val good">2–8×</div></div>
+            <div class="tm-cell"><div class="tm-label">Latency gain</div><div class="tm-val good">1.5–4×</div></div>
+            <div class="tm-cell"><div class="tm-label">Accuracy loss</div><div class="tm-val good">&lt;1–3%</div></div>
+            <div class="tm-cell"><div class="tm-label">Complexity</div><div class="tm-val mid">Low</div></div>
+          </div>
+          <div class="tech-ran-note">
+            <div class="ran-label">📡 In RAN</div>
+            INT8 quantization is almost always applied to distilled models before deploying to DU/RU. FPGA and NPU accelerators in O-RAN hardware have native INT8 MAC units — quantized models map directly to hardware execution paths. Works best <em>after</em> distillation, not instead of it.
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. PRUNING -->
+      <div class="tech-card">
+        <div class="tech-header" onclick="toggleTech(this)">
+          <div class="tech-icon" style="background: rgba(245,197,66,0.1);">✂️</div>
+          <div class="tech-header-text">
+            <div class="tech-name">Pruning</div>
+            <div class="tech-tagline">Remove weights or neurons that contribute little to accuracy</div>
+          </div>
+          <div class="tech-badges">
+            <span class="chip green">size ↓</span>
+            <span class="chip blue">sparsity</span>
+          </div>
+          <div class="tech-toggle">▼</div>
+        </div>
+        <div class="tech-body">
+          <p>
+            Not all neurons in a trained network are equally important. Pruning identifies and removes connections (unstructured) or entire neurons/filters (structured pruning) that have small weights or low gradient impact.
+          </p>
+          <p>
+            <strong>Unstructured pruning</strong> creates sparse weight matrices — hard to speed up on general hardware without sparse compute support. <strong>Structured pruning</strong> removes whole channels or layers — the resulting model is smaller and denser, directly faster on any hardware.
+          </p>
+          <div class="tech-metrics">
+            <div class="tm-cell"><div class="tm-label">Size reduction</div><div class="tm-val good">2–10×</div></div>
+            <div class="tm-cell"><div class="tm-label">Latency gain</div><div class="tm-val mid">1–3× (structured)</div></div>
+            <div class="tm-cell"><div class="tm-label">Accuracy loss</div><div class="tm-val mid">2–8%</div></div>
+            <div class="tm-cell"><div class="tm-label">Complexity</div><div class="tm-val mid">Medium</div></div>
+          </div>
+          <div class="tech-ran-note">
+            <div class="ran-label">📡 In RAN</div>
+            Structured pruning is typically used <em>jointly</em> with distillation — the teacher guides which parts of the student to prune least. A common pipeline: train large model → structured prune → distill remaining capacity → quantize → deploy to DU. Pruning alone without re-training tends to hurt accuracy significantly for wireless channel tasks.
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. FINE-TUNING -->
+      <div class="tech-card">
+        <div class="tech-header" onclick="toggleTech(this)">
+          <div class="tech-icon" style="background: rgba(0,200,160,0.1);">🔧</div>
+          <div class="tech-header-text">
+            <div class="tech-name">Fine-Tuning</div>
+            <div class="tech-tagline">Adapt a pre-trained model to a new specific domain or deployment</div>
+          </div>
+          <div class="tech-badges">
+            <span class="chip green">accuracy ↑</span>
+            <span class="chip blue">domain adapt</span>
+          </div>
+          <div class="tech-toggle">▼</div>
+        </div>
+        <div class="tech-body">
+          <p>
+            Fine-tuning takes a model already trained on a large general dataset and continues training it on a smaller, domain-specific dataset. The model's weights are already initialized well — so convergence is fast and you need far less data.
+          </p>
+          <p>
+            <strong>Important clarification:</strong> Fine-tuning does <em>not</em> by itself make a model smaller or faster. It adapts accuracy to a new context. You'd still need distillation or quantization after fine-tuning to meet RAN latency budgets.
+          </p>
+          <div class="tech-metrics">
+            <div class="tm-cell"><div class="tm-label">Size reduction</div><div class="tm-val bad">None</div></div>
+            <div class="tm-cell"><div class="tm-label">Latency gain</div><div class="tm-val bad">None</div></div>
+            <div class="tm-cell"><div class="tm-label">Accuracy gain</div><div class="tm-val good">+5–20% domain</div></div>
+            <div class="tm-cell"><div class="tm-label">Data needed</div><div class="tm-val good">Small</div></div>
+          </div>
+          <div class="tech-ran-note">
+            <div class="ran-label">📡 In RAN</div>
+            Useful when you need to adapt a general AI-RAN model to a specific deployment: your city's propagation environment, your operator's traffic patterns, your frequency band. Fine-tune the teacher on site-specific drive test or OMC data, then re-distill the student. Fine-tuning is a <em>calibration step</em>, not a compression step.
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. SFT / RLHF-style alignment -->
+      <div class="tech-card">
+        <div class="tech-header" onclick="toggleTech(this)">
+          <div class="tech-icon" style="background: rgba(255,107,61,0.1);">🎯</div>
+          <div class="tech-header-text">
+            <div class="tech-name">Supervised Fine-Tuning (SFT)</div>
+            <div class="tech-tagline">Train on curated expert-labeled examples to shape model behavior</div>
+          </div>
+          <div class="tech-badges">
+            <span class="chip blue">behavior shaping</span>
+            <span class="chip green">label efficient</span>
+          </div>
+          <div class="tech-toggle">▼</div>
+        </div>
+        <div class="tech-body">
+          <p>
+            SFT is a specific form of fine-tuning where you train on expert-curated input/output pairs — rather than raw operational data. The distinction matters: SFT is about shaping <em>what the model does</em>, not just calibrating its domain knowledge.
+          </p>
+          <p>
+            In AI/LLM contexts, SFT is the step that turns a raw language model into a useful assistant. In RAN contexts, it's analogous to training a model specifically on labeled "correct decision" examples from expert network engineers or simulation oracles — teaching the model what good behavior looks like.
+          </p>
+          <div class="tech-metrics">
+            <div class="tm-cell"><div class="tm-label">Size reduction</div><div class="tm-val bad">None</div></div>
+            <div class="tm-cell"><div class="tm-label">Latency gain</div><div class="tm-val bad">None</div></div>
+            <div class="tm-cell"><div class="tm-label">Behavior quality</div><div class="tm-val good">High</div></div>
+            <div class="tm-cell"><div class="tm-label">Data needed</div><div class="tm-val mid">Moderate (labeled)</div></div>
+          </div>
+          <div class="tech-ran-note">
+            <div class="ran-label">📡 In RAN</div>
+            SFT is relevant for AI models in the RIC layer — not in real-time L1/L2. For example, an LLM-based RAN orchestrator (Non-RT RIC reasoning about policy) could be SFT-tuned on expert network engineer decisions. For real-time functions, SFT is a teacher-training step, not a deployment step.
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. NEURAL ARCHITECTURE SEARCH (NAS) -->
+      <div class="tech-card">
+        <div class="tech-header" onclick="toggleTech(this)">
+          <div class="tech-icon" style="background: rgba(180,100,255,0.1);">🔭</div>
+          <div class="tech-header-text">
+            <div class="tech-name">Neural Architecture Search (NAS)</div>
+            <div class="tech-tagline">Automatically find the smallest architecture that meets accuracy targets</div>
+          </div>
+          <div class="tech-badges">
+            <span class="chip green">hardware-aware</span>
+            <span class="chip blue">optimal size</span>
+          </div>
+          <div class="tech-toggle">▼</div>
+        </div>
+        <div class="tech-body">
+          <p>
+            Instead of manually designing a neural network architecture and then compressing it, NAS searches over a space of possible architectures to find one that achieves the best accuracy/latency tradeoff — optionally targeting a specific hardware platform (FPGA, NPU, DSP).
+          </p>
+          <p>
+            Hardware-aware NAS (like NVIDIA's EfficientDet or Once-for-All) generates models that are small <em>by design</em>, not by post-hoc compression. No separate distillation or pruning required — though they can still be applied afterward.
+          </p>
+          <div class="tech-metrics">
+            <div class="tm-cell"><div class="tm-label">Size outcome</div><div class="tm-val good">Optimal</div></div>
+            <div class="tm-cell"><div class="tm-label">Latency outcome</div><div class="tm-val good">HW-targeted</div></div>
+            <div class="tm-cell"><div class="tm-label">Accuracy</div><div class="tm-val good">Near-optimal</div></div>
+            <div class="tm-cell"><div class="tm-label">Search cost</div><div class="tm-val bad">Very high</div></div>
+          </div>
+          <div class="tech-ran-note">
+            <div class="ran-label">📡 In RAN</div>
+            Promising for O-RAN vendors designing AI accelerators for DU/RU chipsets. High upfront compute cost (the search itself requires many GPU-hours) but pays off across millions of deployments. NVIDIA Aerial uses NAS-derived architectures for 5G L1 PHY functions. Not practical for per-operator customization — distillation is more agile there.
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. EARLY EXIT / ADAPTIVE INFERENCE -->
+      <div class="tech-card">
+        <div class="tech-header" onclick="toggleTech(this)">
+          <div class="tech-icon" style="background: rgba(0,200,160,0.08);">⚡</div>
+          <div class="tech-header-text">
+            <div class="tech-name">Early Exit / Adaptive Inference</div>
+            <div class="tech-tagline">Exit the model early when confidence is already high enough</div>
+          </div>
+          <div class="tech-badges">
+            <span class="chip green">dynamic latency</span>
+            <span class="chip blue">per-sample</span>
+          </div>
+          <div class="tech-toggle">▼</div>
+        </div>
+        <div class="tech-body">
+          <p>
+            Multi-exit networks insert early "exit points" at intermediate layers. On easy inputs (high confidence), the model exits at layer 3; on hard inputs, it continues to layer 20. Average latency drops significantly even if worst-case stays the same.
+          </p>
+          <p>
+            Think of it like adaptive coding in your HARQ pipeline — use a simple retransmission strategy when channel conditions are good, escalate to more complex IR-HARQ only when needed. Same adaptivity principle applied to inference depth.
+          </p>
+          <div class="tech-metrics">
+            <div class="tm-cell"><div class="tm-label">Avg latency gain</div><div class="tm-val good">2–5× avg</div></div>
+            <div class="tm-cell"><div class="tm-label">Worst-case latency</div><div class="tm-val mid">Unchanged</div></div>
+            <div class="tm-cell"><div class="tm-label">Accuracy</div><div class="tm-val good">High on easy</div></div>
+            <div class="tm-cell"><div class="tm-label">Complexity</div><div class="tm-val mid">Medium</div></div>
+          </div>
+          <div class="tech-ran-note">
+            <div class="ran-label">📡 In RAN</div>
+            Relevant for beam management and interference prediction — many slots have simple, predictable channel behavior and a shallow exit is sufficient. More complex for L1 PHY where worst-case latency is the hard constraint, not average. Often combined with distillation: distill a multi-exit student where early exits handle common RAN conditions.
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. LoRA / PEFT -->
+      <div class="tech-card">
+        <div class="tech-header" onclick="toggleTech(this)">
+          <div class="tech-icon" style="background: rgba(61,127,255,0.08);">🧩</div>
+          <div class="tech-header-text">
+            <div class="tech-name">LoRA / Parameter-Efficient Fine-Tuning (PEFT)</div>
+            <div class="tech-tagline">Adapt large models cheaply without touching most weights</div>
+          </div>
+          <div class="tech-badges">
+            <span class="chip blue">low-rank adapt</span>
+            <span class="chip green">cheap to update</span>
+          </div>
+          <div class="tech-toggle">▼</div>
+        </div>
+        <div class="tech-body">
+          <p>
+            Low-Rank Adaptation (LoRA) freezes a pre-trained model's weights and adds small trainable "adapter" matrices alongside specific layers. These adapters have far fewer parameters than the base model — so you can fine-tune for a new deployment with a fraction of the compute and data.
+          </p>
+          <p>
+            The base model stays fixed. Swapping LoRA adapters is like swapping filter coefficients in a DSP chain — the underlying signal processing pipeline is the same, but the tuning is updated for the new environment.
+          </p>
+          <div class="tech-metrics">
+            <div class="tm-cell"><div class="tm-label">Size reduction</div><div class="tm-val bad">None (base model)</div></div>
+            <div class="tm-cell"><div class="tm-label">Adapter params</div><div class="tm-val good">0.1–1% of base</div></div>
+            <div class="tm-cell"><div class="tm-label">Update cost</div><div class="tm-val good">Very low</div></div>
+            <div class="tm-cell"><div class="tm-label">Data sovereignty</div><div class="tm-val good">Stays local</div></div>
+          </div>
+          <div class="tech-ran-note">
+            <div class="ran-label">📡 In RAN</div>
+            LoRA is highly relevant for per-operator and per-site calibration with data sovereignty constraints — you share the base distilled student model across operators, but each operator trains their own LoRA adapter on local traffic/channel data without exposing it. This maps cleanly to the federated calibration problem in multi-operator AI-RAN. Not a latency technique — adapter adds near-zero overhead at inference.
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tech-grid -->
+
+    <!-- MEGA COMPARISON TABLE -->
+    <h3>Side-by-Side: All Techniques at a Glance</h3>
+    <p style="font-size:13px; color: var(--text-muted); margin-bottom: 0.5rem;">
+      ● = strong advantage &nbsp; ◑ = partial &nbsp; ○ = weak or none
+    </p>
+
+    <div class="reveal" style="overflow-x: auto;">
+    <table class="mega-table">
+      <thead>
+        <tr>
+          <th>Technique</th>
+          <th>Reduces size?</th>
+          <th>Reduces latency?</th>
+          <th>Improves accuracy?</th>
+          <th>Training data?</th>
+          <th>Hardware-aware?</th>
+          <th>Best for in RAN</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Knowledge Distillation</td>
+          <td><span class="dot-good"></span>Yes — new small model</td>
+          <td><span class="dot-good"></span>Yes — 5–20×</td>
+          <td><span class="dot-mid"></span>Near-teacher accuracy</td>
+          <td><span class="dot-mid"></span>Teacher output needed</td>
+          <td><span class="dot-mid"></span>Indirect</td>
+          <td>L1/L2 inline deployment; primary compression method</td>
+        </tr>
+        <tr>
+          <td>Quantization</td>
+          <td><span class="dot-good"></span>Yes — 2–8×</td>
+          <td><span class="dot-good"></span>Yes — 1.5–4×</td>
+          <td><span class="dot-bad"></span>Slight loss only</td>
+          <td><span class="dot-good"></span>Minimal (calibration)</td>
+          <td><span class="dot-good"></span>INT8/INT4 accelerators</td>
+          <td>Post-distillation step before DU/RU deploy</td>
+        </tr>
+        <tr>
+          <td>Pruning</td>
+          <td><span class="dot-good"></span>Yes — 2–10×</td>
+          <td><span class="dot-mid"></span>Structured only</td>
+          <td><span class="dot-bad"></span>Needs retraining</td>
+          <td><span class="dot-mid"></span>Retraining needed</td>
+          <td><span class="dot-mid"></span>Structured helps</td>
+          <td>Used with distillation; reduce student further</td>
+        </tr>
+        <tr>
+          <td>Fine-Tuning</td>
+          <td><span class="dot-bad"></span>No</td>
+          <td><span class="dot-bad"></span>No</td>
+          <td><span class="dot-good"></span>Domain accuracy ↑↑</td>
+          <td><span class="dot-mid"></span>Site/operator data</td>
+          <td><span class="dot-bad"></span>No</td>
+          <td>Adapt teacher before distillation to local env</td>
+        </tr>
+        <tr>
+          <td>SFT</td>
+          <td><span class="dot-bad"></span>No</td>
+          <td><span class="dot-bad"></span>No</td>
+          <td><span class="dot-good"></span>Behavior quality ↑↑</td>
+          <td><span class="dot-mid"></span>Expert-labeled pairs</td>
+          <td><span class="dot-bad"></span>No</td>
+          <td>Non-RT RIC orchestration; not real-time L1/L2</td>
+        </tr>
+        <tr>
+          <td>NAS</td>
+          <td><span class="dot-good"></span>Yes — optimal</td>
+          <td><span class="dot-good"></span>Yes — HW-targeted</td>
+          <td><span class="dot-good"></span>Near-optimal tradeoff</td>
+          <td><span class="dot-bad"></span>Huge search cost</td>
+          <td><span class="dot-good"></span>Explicit target</td>
+          <td>Chipset design for DU/RU; vendor-level, not per-site</td>
+        </tr>
+        <tr>
+          <td>Early Exit</td>
+          <td><span class="dot-bad"></span>No</td>
+          <td><span class="dot-mid"></span>Avg latency only</td>
+          <td><span class="dot-mid"></span>High on easy inputs</td>
+          <td><span class="dot-mid"></span>Multi-exit training</td>
+          <td><span class="dot-bad"></span>No</td>
+          <td>Beam management with variable channel complexity</td>
+        </tr>
+        <tr>
+          <td>LoRA / PEFT</td>
+          <td><span class="dot-bad"></span>No (base unchanged)</td>
+          <td><span class="dot-bad"></span>No</td>
+          <td><span class="dot-good"></span>Domain accuracy ↑</td>
+          <td><span class="dot-good"></span>Very little needed</td>
+          <td><span class="dot-bad"></span>No</td>
+          <td>Per-operator calibration with data sovereignty</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <!-- DECISION TREE: WHICH TO USE -->
+    <h3 style="margin-top: 2rem;">Which technique for your RAN problem?</h3>
+
+    <div class="decision-tree reveal">
+      <div class="dt-title">// Decision guide — start at the top</div>
+
+      <div class="dt-q">
+        <div class="dt-qlabel">Question 1</div>
+        Do you need the model to run inline in real-time (L1/L2 slot budget, µs–ms)?
+      </div>
+      <div class="dt-branches">
+        <div class="dt-branch yes">
+          <div class="branch-cond">✓ Yes</div>
+          <div class="branch-ans">You need size + latency reduction → proceed to Q2</div>
+        </div>
+        <div class="dt-branch no">
+          <div class="branch-cond">✗ No (Near-RT RIC, RRC, orchestration)</div>
+          <div class="branch-ans">Fine-tuning, SFT, or LoRA are likely sufficient — no compression needed</div>
+        </div>
+      </div>
+
+      <div class="dt-indent">
+        <div class="dt-q">
+          <div class="dt-qlabel">Question 2</div>
+          Do you have a large pre-trained model that already captures the RAN behavior well?
+        </div>
+        <div class="dt-branches">
+          <div class="dt-branch yes">
+            <div class="branch-cond">✓ Yes</div>
+            <div class="branch-ans">Use it as a teacher → apply Knowledge Distillation to create a deployable student</div>
+          </div>
+          <div class="dt-branch no">
+            <div class="branch-cond">✗ No — starting fresh</div>
+            <div class="branch-ans">Consider NAS to design a small-from-the-start architecture, or train small directly</div>
+          </div>
+        </div>
+
+        <div class="dt-indent">
+          <div class="dt-q">
+            <div class="dt-qlabel">Question 3</div>
+            After distillation, is the student still too large or slow for your target hardware (FPGA/NPU)?
+          </div>
+          <div class="dt-branches">
+            <div class="dt-branch yes">
+              <div class="branch-cond">✓ Yes, still too big</div>
+              <div class="branch-ans">Apply Quantization (INT8/INT4) and/or Structured Pruning on top of the student</div>
+            </div>
+            <div class="dt-branch no">
+              <div class="branch-cond">✗ No, it fits</div>
+              <div class="branch-ans">Quantize to INT8 anyway — nearly free accuracy cost, significant hardware speedup</div>
+            </div>
+          </div>
+
+          <div class="dt-indent">
+            <div class="dt-q">
+              <div class="dt-qlabel">Question 4</div>
+              Do you need to adapt the deployed student to a specific operator, city, or frequency band?
+            </div>
+            <div class="dt-branches">
+              <div class="dt-branch yes">
+                <div class="branch-cond">✓ Yes, per-site tuning</div>
+                <div class="branch-ans">Fine-tune the teacher on local data first, then re-distill. Or train LoRA adapters on the student for lightweight per-site calibration.</div>
+              </div>
+              <div class="dt-branch no">
+                <div class="branch-cond">✗ No, general deployment</div>
+                <div class="branch-ans">Deploy the distilled + quantized student as-is. Monitor and schedule periodic re-distillation as the radio environment drifts.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /decision-tree -->
+
+  </section>
+  <!-- END SECTION 5 ALTERNATIVES -->
+
+  <!-- SECTION 06: FROM CORPUS TO DEPLOYED MODEL -->
+  <section id="pipeline" class="reveal">
+    <div class="section-num">06 / From Corpus to Deployed Model</div>
+    <h2>Starting from raw data — the full pipeline</h2>
+
+    <p>
+      You have a large corpus of RAN measurements, simulation outputs, or KPI logs.
+      You want a real-time AI model running in your DU or RU. Here is the complete step-by-step workflow —
+      click through each stage to see what happens and why.
+    </p>
+
+    <div class="pipeline-wrap reveal" id="pipelineWrap">
+
+      <!-- STEP NAV -->
+      <div class="pipe-nav" id="pipeNav">
+        <button class="pipe-nav-btn active" onclick="goStep(0)" id="navBtn0">
+          <div class="pipe-nav-dot"></div>
+          <div class="pipe-nav-num">01</div>
+          <div class="pipe-nav-label">Audit<br>Corpus</div>
+        </button>
+        <button class="pipe-nav-btn" onclick="goStep(1)" id="navBtn1">
+          <div class="pipe-nav-dot"></div>
+          <div class="pipe-nav-num">02</div>
+          <div class="pipe-nav-label">SSL<br>Pre-train</div>
+        </button>
+        <button class="pipe-nav-btn" onclick="goStep(2)" id="navBtn2">
+          <div class="pipe-nav-dot"></div>
+          <div class="pipe-nav-num">03</div>
+          <div class="pipe-nav-label">Generate<br>Labels</div>
+        </button>
+        <button class="pipe-nav-btn" onclick="goStep(3)" id="navBtn3">
+          <div class="pipe-nav-dot"></div>
+          <div class="pipe-nav-num">04</div>
+          <div class="pipe-nav-label">Train<br>Teacher</div>
+        </button>
+        <button class="pipe-nav-btn" onclick="goStep(4)" id="navBtn4">
+          <div class="pipe-nav-dot"></div>
+          <div class="pipe-nav-num">05</div>
+          <div class="pipe-nav-label">Validate<br>Teacher</div>
+        </button>
+        <button class="pipe-nav-btn" onclick="goStep(5)" id="navBtn5">
+          <div class="pipe-nav-dot"></div>
+          <div class="pipe-nav-num">06</div>
+          <div class="pipe-nav-label">Distil<br>Student</div>
+        </button>
+        <button class="pipe-nav-btn" onclick="goStep(6)" id="navBtn6">
+          <div class="pipe-nav-dot"></div>
+          <div class="pipe-nav-num">07</div>
+          <div class="pipe-nav-label">Quantize<br>+ Prune</div>
+        </button>
+        <button class="pipe-nav-btn" onclick="goStep(7)" id="navBtn7">
+          <div class="pipe-nav-dot"></div>
+          <div class="pipe-nav-num">08</div>
+          <div class="pipe-nav-label">Deploy<br>RAN</div>
+        </button>
+      </div>
+
+      <!-- STEP 0: AUDIT CORPUS -->
+      <div class="pipe-step active" id="step0">
+        <div class="step-left">
+          <div class="step-header">
+            <div class="step-num-badge" style="background:rgba(245,197,66,0.15);color:var(--warn);border:1px solid rgba(245,197,66,0.3);">01</div>
+            <div class="step-title-wrap">
+              <div class="step-title">Audit Your Corpus</div>
+              <div class="step-subtitle">UNDERSTAND BEFORE TRAINING</div>
+            </div>
+          </div>
+          <div class="step-body">
+            <p>Before running a single training job, understand what you actually have. Rushing to train on unaudited data is the most common waste of GPU time in wireless ML.</p>
+            <p>Ask four questions about your corpus: <strong>format</strong> (raw IQ, channel matrices, KPI tables?), <strong>labels</strong> (is there ground truth, or is it all raw measurements?), <strong>diversity</strong> (multiple sites and bands, or one cell tower?), and <strong>cleanliness</strong> (gaps, artifacts, handover shadows?).</p>
+            <p>The answer to "do I have labels?" determines which path you take in Step 3.</p>
+          </div>
+          <div class="step-tags">
+            <span class="step-tag" style="background:rgba(245,197,66,0.1);color:var(--warn);border:1px solid rgba(245,197,66,0.2);">data audit</span>
+            <span class="step-tag" style="background:rgba(61,127,255,0.1);color:var(--accent2);border:1px solid rgba(61,127,255,0.2);">EDA</span>
+            <span class="step-tag" style="background:rgba(0,200,160,0.08);color:var(--accent);border:1px solid rgba(0,200,160,0.2);">no GPU needed</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="step-vis-title">// Corpus health check</div>
+          <div class="audit-list">
+            <div class="audit-item" style="animation-delay:0.05s">
+              <span class="ai-icon">📁</span>
+              <span class="ai-label">Data format identified</span>
+              <span class="ai-status ok">✓ IQ / H-matrix</span>
+            </div>
+            <div class="audit-item" style="animation-delay:0.15s">
+              <span class="ai-icon">🏷️</span>
+              <span class="ai-label">Ground truth labels</span>
+              <span class="ai-status warn">⚠ Partial</span>
+            </div>
+            <div class="audit-item" style="animation-delay:0.25s">
+              <span class="ai-icon">🗺️</span>
+              <span class="ai-label">Coverage diversity</span>
+              <span class="ai-status ok">✓ 12 sites, 3 bands</span>
+            </div>
+            <div class="audit-item" style="animation-delay:0.35s">
+              <span class="ai-icon">🧹</span>
+              <span class="ai-label">Missing / corrupted samples</span>
+              <span class="ai-status bad">✗ ~4% gaps</span>
+            </div>
+            <div class="audit-item" style="animation-delay:0.45s">
+              <span class="ai-icon">📊</span>
+              <span class="ai-label">Class / scenario balance</span>
+              <span class="ai-status warn">⚠ UMa heavy</span>
+            </div>
+            <div class="audit-item" style="animation-delay:0.55s">
+              <span class="ai-icon">🔐</span>
+              <span class="ai-label">Data sovereignty OK</span>
+              <span class="ai-status ok">✓ On-premise</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 1: SSL PRE-TRAIN -->
+      <div class="pipe-step" id="step1">
+        <div class="step-left">
+          <div class="step-header">
+            <div class="step-num-badge" style="background:rgba(61,127,255,0.15);color:var(--accent2);border:1px solid rgba(61,127,255,0.3);">02</div>
+            <div class="step-title-wrap">
+              <div class="step-title">Self-Supervised Pre-training</div>
+              <div class="step-subtitle">LEARN FROM UNLABELED DATA</div>
+            </div>
+          </div>
+          <div class="step-body">
+            <p>If your corpus is large but mostly unlabeled, don't throw it away. Use <strong>Self-Supervised Learning (SSL)</strong> to train the teacher on the structure of the data itself — no labels needed.</p>
+            <p><strong>Masked autoencoding</strong>: mask 30–50% of your channel matrix entries and train the model to reconstruct them. It must learn the underlying channel physics to do this well.</p>
+            <p><strong>Contrastive learning</strong>: show the model two augmented versions of the same channel snapshot and train it to recognize they're the same, while pushing apart different conditions.</p>
+            <p>After SSL, your large model is a <em>channel foundation model</em> — rich internal representations, ready for task-specific fine-tuning in the next steps.</p>
+          </div>
+          <div class="step-tags">
+            <span class="step-tag" style="background:rgba(61,127,255,0.1);color:var(--accent2);border:1px solid rgba(61,127,255,0.2);">no labels required</span>
+            <span class="step-tag" style="background:rgba(245,197,66,0.1);color:var(--warn);border:1px solid rgba(245,197,66,0.2);">GPU intensive</span>
+            <span class="step-tag" style="background:rgba(0,200,160,0.08);color:var(--accent);border:1px solid rgba(0,200,160,0.2);">foundation model</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="step-vis-title">// Masked autoencoding — channel matrix reconstruction</div>
+          <div class="ssl-flow">
+            <div class="ssl-row">
+              <div class="ssl-box">H[full]</div>
+              <div class="ssl-arrow">→</div>
+              <div class="ssl-box ssl-mask">H[masked 40%]</div>
+              <div class="ssl-arrow">→</div>
+              <span style="font-size:12px;">large model</span>
+            </div>
+            <div class="ssl-row" style="padding-left: 2rem;">
+              <div class="ssl-arrow">↓</div>
+            </div>
+            <div class="ssl-row">
+              <div class="ssl-box ssl-recon">Ĥ[reconstructed]</div>
+              <div class="ssl-arrow">≈</div>
+              <div class="ssl-box">H[full]</div>
+              <span style="margin-left:auto;font-size:11px;color:var(--accent);">loss↓</span>
+            </div>
+            <div style="margin-top: 0.6rem; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.7rem; font-size: 12px; color: var(--text-muted);">
+              <div style="font-family: var(--mono); font-size: 9px; color: var(--accent); margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.08em;">📡 RF analogy</div>
+              Like training a channel estimator to fill in missing pilot subcarriers — the model must learn channel coherence bandwidth to interpolate correctly.
+            </div>
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.6rem 0.8rem;">
+              <div style="font-family: var(--mono); font-size: 9px; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.06em;">Skip if already labeled?</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Yes — if you have sufficient labeled data, jump directly to Step 3. SSL is most valuable when labels are scarce.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: GENERATE LABELS -->
+      <div class="pipe-step" id="step2">
+        <div class="step-left">
+          <div class="step-header">
+            <div class="step-num-badge" style="background:rgba(255,107,61,0.15);color:var(--accent3);border:1px solid rgba(255,107,61,0.3);">03</div>
+            <div class="step-title-wrap">
+              <div class="step-title">Generate or Source Labels</div>
+              <div class="step-subtitle">SUPERVISED SIGNAL FOR TEACHER TRAINING</div>
+            </div>
+          </div>
+          <div class="step-body">
+            <p>To train the teacher for a specific RAN task, you need (input → correct output) pairs. If your corpus lacks labels, there are three paths to generate them.</p>
+            <p><strong>Option A — Simulation oracle</strong>: run your TR 38.901 / Sionna / ray-trace simulator on representative scenarios. The simulator output is your ground truth. This is the strongest option — you can generate millions of labeled samples. Your VIAVI simulation infrastructure is a significant advantage here.</p>
+            <p><strong>Option B — Traditional algorithm labels</strong>: run a classical algorithm (MMSE estimator, codebook beam sweep, fixed MCS table) on your corpus and use its decisions as labels. The teacher learns to match — then exceed — the traditional baseline.</p>
+            <p><strong>Option C — Expert annotation</strong>: RF engineers label a small set of "textbook" examples. Most useful for edge cases and anomalies, not scale training.</p>
+          </div>
+          <div class="step-tags">
+            <span class="step-tag" style="background:rgba(255,107,61,0.1);color:var(--accent3);border:1px solid rgba(255,107,61,0.2);">critical step</span>
+            <span class="step-tag" style="background:rgba(61,127,255,0.1);color:var(--accent2);border:1px solid rgba(61,127,255,0.2);">simulation oracle</span>
+            <span class="step-tag" style="background:rgba(245,197,66,0.1);color:var(--warn);border:1px solid rgba(245,197,66,0.2);">label quality = teacher quality</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="step-vis-title">// Label source options — choose one or combine</div>
+          <div class="label-sources">
+            <div class="ls-item" style="border-color:rgba(0,200,160,0.3);background:rgba(0,200,160,0.04);">
+              <span class="ls-icon">🔬</span>
+              <div class="ls-text">
+                <strong>Simulation Oracle (Recommended)</strong>
+                TR 38.901 / Sionna / ray tracer → generates unlimited (channel, label) pairs. Highest quality, fully controllable diversity.
+              </div>
+            </div>
+            <div class="ls-item">
+              <span class="ls-icon">⚙️</span>
+              <div class="ls-text">
+                <strong>Traditional Algorithm Labels</strong>
+                Run MMSE / codebook sweep on corpus → teacher learns to match and surpass. Fast to bootstrap, accuracy ceiling = algorithm quality.
+              </div>
+            </div>
+            <div class="ls-item">
+              <span class="ls-icon">👨‍💻</span>
+              <div class="ls-text">
+                <strong>Expert Annotation</strong>
+                RF engineer labels edge cases manually. Best for rare scenarios (handover failure, deep fade). Not scalable alone.
+              </div>
+            </div>
+            <div class="ls-item" style="border-color: rgba(245,197,66,0.3); background: rgba(245,197,66,0.04);">
+              <span class="ls-icon">⚠️</span>
+              <div class="ls-text">
+                <strong>Label quality is the bottleneck.</strong>
+                A teacher trained on noisy or biased labels will produce misleading soft labels → student inherits the errors.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: TRAIN TEACHER -->
+      <div class="pipe-step" id="step3">
+        <div class="step-left">
+          <div class="step-header">
+            <div class="step-num-badge" style="background:rgba(61,127,255,0.15);color:var(--accent2);border:1px solid rgba(61,127,255,0.3);">04</div>
+            <div class="step-title-wrap">
+              <div class="step-title">Train the Teacher Model</div>
+              <div class="step-subtitle">SUPERVISED FINE-TUNING ON LABELED DATA</div>
+            </div>
+          </div>
+          <div class="step-body">
+            <p>Now SFT the teacher. If you ran SSL pre-training, load those weights and continue training on your labeled set. If you have labels from the start, train from scratch or from a published wireless foundation model checkpoint.</p>
+            <p><strong>What architecture?</strong> Depends on your task. For channel estimation / beam management: large CNN or Transformer. For time-series KPI prediction: LSTM or Temporal Transformer. For multi-cell coordination: Graph Neural Network (GNN).</p>
+            <p>The teacher does <em>not</em> need to meet latency requirements. It runs offline on your GPU server. Size it for <strong>maximum accuracy</strong> — 10M to 100M parameters is common for RAN teachers.</p>
+            <p>Training data split: 70% train / 15% validation / 15% test. Monitor validation loss to catch overfitting to your specific site conditions.</p>
+          </div>
+          <div class="step-tags">
+            <span class="step-tag" style="background:rgba(61,127,255,0.1);color:var(--accent2);border:1px solid rgba(61,127,255,0.2);">SFT</span>
+            <span class="step-tag" style="background:rgba(245,197,66,0.1);color:var(--warn);border:1px solid rgba(245,197,66,0.2);">GPU server</span>
+            <span class="step-tag" style="background:rgba(0,200,160,0.08);color:var(--accent);border:1px solid rgba(0,200,160,0.2);">offline only</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="step-vis-title">// Teacher training — architecture by task</div>
+          <div style="display: flex; flex-direction: column; gap: 0.45rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-radius: 4px; overflow: hidden; border: 1px solid var(--border);">
+              <div style="background: var(--surface2); padding: 0.5rem 0.7rem; font-family: var(--mono); font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em;">Task</div>
+              <div style="background: var(--surface2); padding: 0.5rem 0.7rem; font-family: var(--mono); font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em;">Teacher Architecture</div>
+              <div style="background: var(--surface); padding: 0.5rem 0.7rem; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border);">Channel estimation</div>
+              <div style="background: var(--surface); padding: 0.5rem 0.7rem; font-size: 12px; color: var(--accent2); border-top: 1px solid var(--border);">Large CNN / UNet</div>
+              <div style="background: var(--surface); padding: 0.5rem 0.7rem; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border);">Beam management</div>
+              <div style="background: var(--surface); padding: 0.5rem 0.7rem; font-size: 12px; color: var(--accent2); border-top: 1px solid var(--border);">Transformer</div>
+              <div style="background: var(--surface); padding: 0.5rem 0.7rem; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border);">MCS / link adapt</div>
+              <div style="background: var(--surface); padding: 0.5rem 0.7rem; font-size: 12px; color: var(--accent2); border-top: 1px solid var(--border);">LSTM / Temporal TF</div>
+              <div style="background: var(--surface); padding: 0.5rem 0.7rem; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border);">Interference coord</div>
+              <div style="background: var(--surface); padding: 0.5rem 0.7rem; font-size: 12px; color: var(--accent2); border-top: 1px solid var(--border);">GNN</div>
+              <div style="background: var(--surface); padding: 0.5rem 0.7rem; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border);">HO prediction</div>
+              <div style="background: var(--surface); padding: 0.5rem 0.7rem; font-size: 12px; color: var(--accent2); border-top: 1px solid var(--border);">GNN + LSTM</div>
+            </div>
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.6rem 0.8rem; font-size: 12px; color: var(--text-muted);">
+              <span style="font-family: var(--mono); font-size: 9px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 3px;">Size target</span>
+              10M–100M parameters. No latency constraint. Maximize accuracy on held-out test set before proceeding to distillation.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4: VALIDATE TEACHER -->
+      <div class="pipe-step" id="step4">
+        <div class="step-left">
+          <div class="step-header">
+            <div class="step-num-badge" style="background:rgba(245,197,66,0.15);color:var(--warn);border:1px solid rgba(245,197,66,0.3);">05</div>
+            <div class="step-title-wrap">
+              <div class="step-title">Validate the Teacher</div>
+              <div class="step-subtitle">DON'T DISTILL A BAD TEACHER</div>
+            </div>
+          </div>
+          <div class="step-body">
+            <p>This step is often skipped and is the second most common cause of poor distillation outcomes. A poorly validated teacher produces misleading soft labels — the student then learns the teacher's confusion.</p>
+            <p><strong>Accuracy</strong>: does the teacher outperform the traditional baseline on your test set? If not, your labels or architecture need work before distilling.</p>
+            <p><strong>Calibration</strong>: if the teacher outputs 90% probability for an answer, is it correct ~90% of the time? Miscalibrated models (overconfident or underconfident) produce distorted soft labels. Check expected calibration error (ECE).</p>
+            <p><strong>Generalization</strong>: test on a site or frequency band not in the training set. A teacher that memorized one cell tower is a poor teacher.</p>
+          </div>
+          <div class="step-tags">
+            <span class="step-tag" style="background:rgba(245,197,66,0.1);color:var(--warn);border:1px solid rgba(245,197,66,0.2);">gate before distillation</span>
+            <span class="step-tag" style="background:rgba(0,200,160,0.08);color:var(--accent);border:1px solid rgba(0,200,160,0.2);">calibration check</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="step-vis-title">// Teacher validation scorecard</div>
+          <div class="cal-meter" id="calMeter">
+            <div class="cal-row">
+              <div class="cal-label">Accuracy</div>
+              <div class="cal-bar-wrap"><div class="cal-bar acc" id="calAcc">—</div></div>
+            </div>
+            <div class="cal-row">
+              <div class="cal-label">Calibration</div>
+              <div class="cal-bar-wrap"><div class="cal-bar conf" id="calConf">—</div></div>
+            </div>
+            <div class="cal-row">
+              <div class="cal-label">Generalization</div>
+              <div class="cal-bar-wrap"><div class="cal-bar gen" id="calGen">—</div></div>
+            </div>
+          </div>
+          <div style="margin-top: 0.8rem; display: flex; flex-direction: column; gap: 0.4rem;">
+            <div style="background: rgba(0,200,160,0.06); border: 1px solid rgba(0,200,160,0.2); border-radius: 3px; padding: 0.5rem 0.7rem; font-size: 12px; color: var(--text-muted);">
+              <span style="color:var(--accent); font-weight: 500;">✓ Pass:</span> Accuracy &gt; baseline + 5%, ECE &lt; 0.05, generalization gap &lt; 3%
+            </div>
+            <div style="background: rgba(255,107,61,0.06); border: 1px solid rgba(255,107,61,0.2); border-radius: 3px; padding: 0.5rem 0.7rem; font-size: 12px; color: var(--text-muted);">
+              <span style="color:var(--accent3); font-weight: 500;">✗ Fail:</span> Return to Step 3 — adjust architecture, add data augmentation, or improve label quality
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 5: DISTIL -->
+      <div class="pipe-step" id="step5">
+        <div class="step-left">
+          <div class="step-header">
+            <div class="step-num-badge" style="background:rgba(0,200,160,0.15);color:var(--accent);border:1px solid rgba(0,200,160,0.3);">06</div>
+            <div class="step-title-wrap">
+              <div class="step-title">Distil the Student</div>
+              <div class="step-subtitle">TRANSFER KNOWLEDGE TO COMPACT MODEL</div>
+            </div>
+          </div>
+          <div class="step-body">
+            <p>Run the teacher over your full training corpus to generate soft label outputs. Then train the student — a much smaller network — to match these soft outputs.</p>
+            <p><strong>Student architecture</strong>: start with 10–20× fewer parameters than the teacher. A small MLP or shallow CNN for L1 tasks; a compact GNN for near-RT RIC tasks. Don't over-design it — let distillation fill the gaps.</p>
+            <p><strong>Temperature T</strong>: start at T = 4. The teacher's probabilities soften, giving the student more signal about near-correct options. Sweep T ∈ {2, 4, 6, 8} and pick the one that minimizes student–teacher KL divergence on validation.</p>
+            <p><strong>Loss function</strong>: combine distillation loss (KL divergence from teacher soft labels) with task loss (cross-entropy from hard ground truth labels). A 0.7/0.3 split is common.</p>
+          </div>
+          <div class="step-tags">
+            <span class="step-tag" style="background:rgba(0,200,160,0.1);color:var(--accent);border:1px solid rgba(0,200,160,0.2);">core technique</span>
+            <span class="step-tag" style="background:rgba(61,127,255,0.1);color:var(--accent2);border:1px solid rgba(61,127,255,0.2);">temperature T=4</span>
+            <span class="step-tag" style="background:rgba(245,197,66,0.1);color:var(--warn);border:1px solid rgba(245,197,66,0.2);">KL divergence loss</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="step-vis-title">// Knowledge transfer — teacher → student</div>
+          <div class="distil-visual">
+            <div class="dv-row">
+              <div class="dv-box dv-teacher">🧠 Teacher <span style="opacity:0.6; margin-left: auto;">100M params</span></div>
+            </div>
+            <div class="dv-arrow-wrap">
+              <div class="dv-arrow">↓</div>
+            </div>
+            <div class="soft-flow">
+              <span style="color:var(--text-muted);">soft labels T=4:</span>
+              <span class="sf-chip" style="background:rgba(61,127,255,0.2);color:var(--accent2);">Beam3: 72%</span>
+              <span class="sf-chip" style="background:rgba(61,127,255,0.12);color:var(--accent2);">Beam2: 20%</span>
+              <span class="sf-chip" style="background:rgba(61,127,255,0.06);color:var(--text-muted);">Beam1: 8%</span>
+            </div>
+            <div class="dv-arrow-wrap">
+              <div class="dv-arrow">↓</div>
+            </div>
+            <div class="dv-row">
+              <div class="dv-box dv-student">⚡ Student <span style="opacity:0.6; margin-left: auto;">5M params</span></div>
+            </div>
+            <div style="width:100%; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.6rem 0.8rem; font-size: 12px; color: var(--text-muted);">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                <span style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">Student accuracy vs. teacher</span>
+              </div>
+              <div style="height: 8px; background: var(--surface2); border-radius: 2px; overflow:hidden;">
+                <div style="width: 94%; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px;"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:3px;font-family:var(--mono);font-size:9px;">
+                <span style="color:var(--text-muted);">0%</span>
+                <span style="color:var(--accent);">94% — typical outcome</span>
+                <span style="color:var(--text-muted);">100%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 6: QUANTIZE + PRUNE -->
+      <div class="pipe-step" id="step6">
+        <div class="step-left">
+          <div class="step-header">
+            <div class="step-num-badge" style="background:rgba(61,127,255,0.15);color:var(--accent2);border:1px solid rgba(61,127,255,0.3);">07</div>
+            <div class="step-title-wrap">
+              <div class="step-title">Quantize &amp; Prune</div>
+              <div class="step-subtitle">HARDWARE-READY COMPRESSION</div>
+            </div>
+          </div>
+          <div class="step-body">
+            <p>The distilled student is still stored in FP32. Before deployment to your DU or RU, apply post-training quantization and optionally structured pruning.</p>
+            <p><strong>INT8 quantization</strong>: convert all weights from 32-bit floats to 8-bit integers. Requires a small calibration dataset (a few hundred samples) to compute quantization scale factors. Accuracy impact is typically &lt;1% for well-trained students.</p>
+            <p><strong>INT4 quantization</strong>: more aggressive — 8× compression vs FP32. Accuracy loss increases to 2–4%. Worth trying if your target hardware supports INT4 MACs (some newer NPUs do).</p>
+            <p><strong>Structured pruning</strong> (optional): remove entire filters or layers with low L2-norm weights. Re-run a few epochs of distillation after pruning to recover accuracy. Apply this before quantization.</p>
+            <p>Always profile on the <em>actual target hardware</em> — FLOPs don't predict real latency. Memory bandwidth is often the bottleneck on embedded FPGA/NPU.</p>
+          </div>
+          <div class="step-tags">
+            <span class="step-tag" style="background:rgba(61,127,255,0.1);color:var(--accent2);border:1px solid rgba(61,127,255,0.2);">INT8 / INT4</span>
+            <span class="step-tag" style="background:rgba(0,200,160,0.08);color:var(--accent);border:1px solid rgba(0,200,160,0.2);">FPGA / NPU ready</span>
+            <span class="step-tag" style="background:rgba(245,197,66,0.1);color:var(--warn);border:1px solid rgba(245,197,66,0.2);">profile on real HW</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="step-vis-title">// Precision reduction — FP32 → INT8 → INT4</div>
+          <div class="quant-rows" id="quantRows">
+            <!-- Rendered by JS -->
+          </div>
+          <div style="margin-top: 0.8rem; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem 0.6rem; text-align:center;">
+              <div style="font-family:var(--mono);font-size:9px;color:var(--text-muted);margin-bottom:2px;">FP32 size</div>
+              <div style="font-size:13px;font-weight:500;color:var(--accent3);">100%</div>
+            </div>
+            <div style="background: var(--surface); border: 1px solid rgba(0,200,160,0.2); border-radius: 4px; padding: 0.5rem 0.6rem; text-align:center;">
+              <div style="font-family:var(--mono);font-size:9px;color:var(--text-muted);margin-bottom:2px;">INT8 size</div>
+              <div style="font-size:13px;font-weight:500;color:var(--accent);">25%</div>
+            </div>
+            <div style="background: var(--surface); border: 1px solid rgba(0,200,160,0.3); border-radius: 4px; padding: 0.5rem 0.6rem; text-align:center;">
+              <div style="font-family:var(--mono);font-size:9px;color:var(--text-muted);margin-bottom:2px;">INT4 size</div>
+              <div style="font-size:13px;font-weight:500;color:var(--accent);">12.5%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 7: DEPLOY -->
+      <div class="pipe-step" id="step7">
+        <div class="step-left">
+          <div class="step-header">
+            <div class="step-num-badge" style="background:rgba(0,200,160,0.2);color:var(--accent);border:1px solid rgba(0,200,160,0.4);">08</div>
+            <div class="step-title-wrap">
+              <div class="step-title">Deploy to the RAN Stack</div>
+              <div class="step-subtitle">REAL-TIME INFERENCE IN O-RAN</div>
+            </div>
+          </div>
+          <div class="step-body">
+            <p>Package the quantized student as an ONNX model (the standard interchange format for AI in O-RAN). Deploy it to the appropriate layer of the RAN stack based on its latency class.</p>
+            <p><strong>L1 / RU tasks</strong> (beam management, channel estimation): model loads into FPGA/NPU accelerator bitstream. Inference runs inline with the slot pipeline at &lt;200 µs.</p>
+            <p><strong>L2 / DU tasks</strong> (MCS, scheduling): model serves as a library call from the MAC scheduler. Inference at 1–2 ms.</p>
+            <p><strong>Near-RT RIC tasks</strong> (HO prediction, interference): model runs as an xApp. Inference at 10 ms – 1 s.</p>
+            <p>Set up a monitoring loop: track inference latency, accuracy drift vs. the traditional baseline, and schedule <strong>re-distillation</strong> when the radio environment shifts (new sites, seasonal propagation, frequency refarming).</p>
+          </div>
+          <div class="step-tags">
+            <span class="step-tag" style="background:rgba(0,200,160,0.12);color:var(--accent);border:1px solid rgba(0,200,160,0.25);">ONNX export</span>
+            <span class="step-tag" style="background:rgba(0,200,160,0.08);color:var(--accent);border:1px solid rgba(0,200,160,0.2);">real-time</span>
+            <span class="step-tag" style="background:rgba(61,127,255,0.1);color:var(--accent2);border:1px solid rgba(61,127,255,0.2);">monitor + re-distil</span>
+          </div>
+        </div>
+        <div class="step-right">
+          <div class="step-vis-title">// O-RAN deployment — where your model lands</div>
+          <div class="deploy-stack">
+            <div class="ds-layer l-nonrt" style="animation-delay:0.0s">
+              <span class="dl-name">Non-RT RIC</span>
+              <span class="dl-model">teacher training / policy</span>
+            </div>
+            <div style="text-align:center;font-size:11px;color:var(--text-muted);padding: 1px 0;">↕ A1 interface</div>
+            <div class="ds-layer l-nearrt" style="animation-delay:0.1s">
+              <span class="dl-name">Near-RT RIC (xApp)</span>
+              <span class="dl-model">distilled GNN — HO, interference</span>
+            </div>
+            <div style="text-align:center;font-size:11px;color:var(--text-muted);padding: 1px 0;">↕ E2 interface</div>
+            <div class="ds-layer l-cu" style="animation-delay:0.2s">
+              <span class="dl-name">CU</span>
+              <span class="dl-model">compact transformer — RRC AI</span>
+            </div>
+            <div class="ds-layer l-du" style="animation-delay:0.3s">
+              <span class="dl-name">DU (L2 / MAC)</span>
+              <span class="dl-model">INT8 student — MCS, scheduler</span>
+            </div>
+            <div class="ds-layer l-ru" style="animation-delay:0.4s">
+              <span class="dl-name">RU (L1 / PHY)</span>
+              <span class="dl-model">INT4/INT8 tiny net — ch. est, beam</span>
+            </div>
+          </div>
+          <div style="margin-top: 0.8rem; background: rgba(0,200,160,0.06); border: 1px solid rgba(0,200,160,0.2); border-radius: 4px; padding: 0.6rem 0.8rem; font-size: 12px; color: var(--text-muted);">
+            <span style="color:var(--accent);font-weight:500;">Pipeline complete.</span> Schedule periodic re-distillation as channels drift. Use LoRA adapters for per-operator calibration without retraining the full student.
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTROLS -->
+      <div class="pipe-controls">
+        <button class="pipe-btn" id="btnPrev" onclick="stepNav(-1)" disabled>← Prev</button>
+        <span class="pipe-progress-text" id="pipeProgressTxt">Step 1 of 8</span>
+        <button class="pipe-btn primary" id="btnNext" onclick="stepNav(1)">Next →</button>
+      </div>
+
+    </div><!-- /pipeline-wrap -->
+  </section>
+  <!-- END SECTION 06 PIPELINE -->
+
+  <!-- SECTION 07: QUIZ -->
+  <section id="quiz" class="reveal">
+    <div class="section-num">07 / Check Your Understanding</div>
+    <h2>Three quick questions</h2>
+
+    <!-- Q1 -->
+    <div class="quiz-wrap reveal">
+      <div class="quiz-q">1 — A large AI model achieves 98% accuracy predicting the best beam, but takes 8 ms to run. Your L1 budget is 200 µs. What is the right approach?</div>
+      <div class="quiz-options" id="q1">
+        <button class="quiz-opt" onclick="answer('q1',this,false,'q1fb')">A. Use the large model — 98% accuracy is too valuable to lose.</button>
+        <button class="quiz-opt" onclick="answer('q1',this,true,'q1fb')">B. Use the large model as a teacher to distill a smaller model that fits the time budget.</button>
+        <button class="quiz-opt" onclick="answer('q1',this,false,'q1fb')">C. Skip AI entirely — traditional codebook-based beam selection is fine.</button>
+        <button class="quiz-opt" onclick="answer('q1',this,false,'q1fb')">D. Move beam management to the cloud where latency doesn't matter.</button>
+      </div>
+      <div class="quiz-feedback" id="q1fb"></div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="quiz-wrap reveal">
+      <div class="quiz-q">2 — What is the key advantage of training the student on "soft labels" from the teacher, rather than just hard correct/incorrect labels from raw data?</div>
+      <div class="quiz-options" id="q2">
+        <button class="quiz-opt" onclick="answer('q2',this,false,'q2fb')">A. Soft labels reduce the size of the training dataset needed.</button>
+        <button class="quiz-opt" onclick="answer('q2',this,false,'q2fb')">B. Soft labels make the student model's weights smaller.</button>
+        <button class="quiz-opt" onclick="answer('q2',this,true,'q2fb')">C. Soft labels carry richer information — including how similar the wrong answers were — helping the student generalize better.</button>
+        <button class="quiz-opt" onclick="answer('q2',this,false,'q2fb')">D. Soft labels eliminate the need for a teacher model entirely.</button>
+      </div>
+      <div class="quiz-feedback" id="q2fb"></div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="quiz-wrap reveal">
+      <div class="quiz-q">3 — In the O-RAN architecture, where would you most likely deploy the TEACHER model vs. the STUDENT model?</div>
+      <div class="quiz-options" id="q3">
+        <button class="quiz-opt" onclick="answer('q3',this,false,'q3fb')">A. Both run in the RU — the student is just a faster version of the teacher.</button>
+        <button class="quiz-opt" onclick="answer('q3',this,false,'q3fb')">B. Teacher runs in the DU, student runs in the CU.</button>
+        <button class="quiz-opt" onclick="answer('q3',this,true,'q3fb')">C. Teacher trains offline in the Non-RT RIC; student deploys to DU/RU for real-time inference.</button>
+        <button class="quiz-opt" onclick="answer('q3',this,false,'q3fb')">D. Teacher handles downlink, student handles uplink.</button>
+      </div>
+      <div class="quiz-feedback" id="q3fb"></div>
+    </div>
+  </section>
+
+  <!-- SECTION 6: SUMMARY -->
+  <section id="summary" class="reveal">
+    <div class="section-num">08 / Summary</div>
+    <h2>The short version</h2>
+
+    <div class="summary-grid">
+      <div class="sum-card">
+        <div class="sum-icon">⚡</div>
+        <div class="sum-title">The Problem</div>
+        <div class="sum-text">RAN time budgets (µs–ms) are incompatible with large AI model inference times (ms–s). You can't run a transformer inline in L1.</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-icon">🎓</div>
+        <div class="sum-title">The Technique</div>
+        <div class="sum-text">A large teacher model is trained offline, then used to train a small student model — transferring understanding, not just answers.</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-icon">📊</div>
+        <div class="sum-title">The Gain</div>
+        <div class="sum-text">5–20× faster inference with only 3–10% accuracy drop. Student runs on DU/RU hardware within L1/L2 slot timing.</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-icon">🏗️</div>
+        <div class="sum-title">Where It Fits</div>
+        <div class="sum-text">Beam management, channel estimation, link adaptation, HO prediction. Teacher in Non-RT RIC; student in CU/DU/RU depending on latency class.</div>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- GLOSSARY -->
+  <section id="glossary" class="reveal">
+    <div class="section-num">Appendix / Glossary</div>
+    <h2>Key terms</h2>
+    <div class="glossary" style="margin-top: 1.5rem;">
+      <div class="glos-item">
+        <div class="glos-term">Knowledge Distillation</div>
+        <div class="glos-def">Training a compact model (student) to mimic a larger model (teacher) using the teacher's output probabilities as a training signal.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Teacher Model</div>
+        <div class="glos-def">The large, accurate neural network trained offline. Too slow for real-time inference. Acts as the "expert" the student learns from.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Student Model</div>
+        <div class="glos-def">The compact model trained to mimic the teacher. Fast enough for inline RAN deployment on DU/RU hardware.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Soft Labels</div>
+        <div class="glos-def">Probability distributions over all possible outputs (e.g. beam probabilities) produced by the teacher. Contain more information than hard binary labels.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Temperature (T)</div>
+        <div class="glos-def">A parameter that controls how "spread out" the teacher's probabilities are. Higher T = softer distribution = more training signal for the student.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Feature Distillation</div>
+        <div class="glos-def">Also called "hints." Student learns to match not just the teacher's final output, but its internal layer representations.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Structured Pruning</div>
+        <div class="glos-def">Systematically removing unimportant parts of a neural network (whole neurons or layers) before or during distillation to further reduce model size.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Inference Latency</div>
+        <div class="glos-def">Time to run a trained model on new input. The key constraint for deploying AI in real-time RAN functions.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Quantization</div>
+        <div class="glos-def">Reducing numerical precision of model weights from FP32 to INT8 or INT4. Cuts memory and enables hardware-accelerated inference on FPGA/NPU without changing model architecture.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Pruning</div>
+        <div class="glos-def">Removing low-importance weights or neurons from a trained model. Structured pruning removes entire channels/layers and is hardware-friendly; unstructured pruning creates sparse matrices that require special hardware support.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Fine-Tuning</div>
+        <div class="glos-def">Continuing training of a pre-trained model on new domain-specific data. Improves accuracy for a specific deployment context but does not reduce model size or inference latency.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">SFT (Supervised Fine-Tuning)</div>
+        <div class="glos-def">Fine-tuning on expert-curated labeled examples to shape what decisions a model makes. Shapes behavior quality rather than improving speed. Relevant for Non-RT RIC AI orchestration.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">NAS (Neural Arch. Search)</div>
+        <div class="glos-def">Automated search over possible network architectures to find the one with the best accuracy/latency tradeoff for a target hardware platform. High upfront cost; used by chipset vendors.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Early Exit</div>
+        <div class="glos-def">Network design with intermediate output branches that allows simple inputs to exit before the final layer. Reduces average inference latency; worst-case latency is unchanged.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">LoRA / PEFT</div>
+        <div class="glos-def">Low-Rank Adaptation — adds small trainable adapter matrices to a frozen model. Enables cheap per-site or per-operator fine-tuning with minimal data. Base model and its latency unchanged; adapters add near-zero overhead.</div>
+      </div>
+        <div class="glos-def">O-RAN component operating at >1s timescale. Hosts AI training, policy management. Where teachers are typically trained.</div>
+      </div>
+      <div class="glos-item">
+        <div class="glos-term">Near-RT RIC</div>
+        <div class="glos-def">O-RAN component operating at 10ms–1s. Hosts xApps. Where mid-size distilled students can run.</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // ===================== PIPELINE STEPPER =====================
+  let currentStep = 0;
+  const totalSteps = 8;
+  let prevStep = -1;
+
+  function goStep(n, reverse) {
+    if (n < 0 || n >= totalSteps) return;
+    const oldStep = currentStep;
+    // Hide old
+    const old = document.getElementById('step' + oldStep);
+    if (old) { old.classList.remove('active', 'reverse'); }
+
+    currentStep = n;
+
+    // Show new
+    const next = document.getElementById('step' + currentStep);
+    if (next) {
+      next.classList.remove('reverse');
+      if (reverse) next.classList.add('reverse');
+      next.classList.add('active');
+    }
+
+    // Update nav buttons
+    for (let i = 0; i < totalSteps; i++) {
+      const btn = document.getElementById('navBtn' + i);
+      if (!btn) continue;
+      btn.classList.remove('active', 'done');
+      if (i === currentStep) btn.classList.add('active');
+      else if (i < currentStep) btn.classList.add('done');
+    }
+
+    // Update controls
+    document.getElementById('btnPrev').disabled = (currentStep === 0);
+    document.getElementById('btnNext').disabled = (currentStep === totalSteps - 1);
+    document.getElementById('pipeProgressTxt').textContent = 'Step ' + (currentStep + 1) + ' of ' + totalSteps;
+
+    // Step-specific animations
+    if (currentStep === 4) animateCalibration();
+    if (currentStep === 6) renderQuantRows();
+  }
+
+  function stepNav(dir) {
+    goStep(currentStep + dir, dir < 0);
+  }
+
+  function animateCalibration() {
+    const bars = [
+      { id: 'calAcc', width: '92%', label: '92%' },
+      { id: 'calConf', width: '87%', label: '87%' },
+      { id: 'calGen', width: '79%', label: '79%' }
+    ];
+    bars.forEach(({ id, width, label }, i) => {
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) { el.style.width = width; el.textContent = label; }
+      }, i * 200 + 100);
+    });
+  }
+
+  function renderQuantRows() {
+    const container = document.getElementById('quantRows');
+    if (!container || container.children.length > 0) return;
+
+    const rows = [
+      { label: 'FP32', bits: 32, active: 32, color: 'var(--accent3)' },
+      { label: 'INT8', bits: 32, active: 8, color: 'var(--warn)' },
+      { label: 'INT4', bits: 32, active: 4, color: 'var(--accent)' }
+    ];
+
+    rows.forEach(({ label, bits, active, color }, ri) => {
+      const row = document.createElement('div');
+      row.className = 'qr-row';
+      const lbl = document.createElement('div');
+      lbl.className = 'qr-label';
+      lbl.textContent = label;
+      row.appendChild(lbl);
+      const bitsWrap = document.createElement('div');
+      bitsWrap.className = 'qr-bits';
+      const showBits = Math.min(bits, 32);
+      for (let i = 0; i < showBits; i++) {
+        const bit = document.createElement('div');
+        bit.className = 'qr-bit';
+        bit.style.animationDelay = (ri * 0.12 + i * 0.02) + 's';
+        const isActive = i < active;
+        bit.classList.add(isActive ? (ri === 0 ? 'on' : (ri === 1 ? 'on' : 'on')) : 'grayed');
+        if (!isActive) bit.style.opacity = '0.25';
+        if (i < active) bit.style.background = color.replace('var(--accent3)', 'rgba(255,107,61,0.2)').replace('var(--warn)', 'rgba(245,197,66,0.18)').replace('var(--accent)', 'rgba(0,200,160,0.18)');
+        if (i < active) bit.style.borderColor = color.replace('var(--accent3)', 'rgba(255,107,61,0.4)').replace('var(--warn)', 'rgba(245,197,66,0.35)').replace('var(--accent)', 'rgba(0,200,160,0.35)');
+        if (i < active) bit.style.color = color;
+        bitsWrap.appendChild(bit);
+      }
+      row.appendChild(bitsWrap);
+      const stat = document.createElement('span');
+      stat.className = 'qr-stat';
+      stat.style.color = color;
+      stat.textContent = active + '-bit';
+      row.appendChild(stat);
+      container.appendChild(row);
+    });
+  }
+  // ============================================================
+
+  // Tech card accordion
+  function toggleTech(header) {
+    const body = header.nextElementSibling;
+    const toggle = header.querySelector('.tech-toggle');
+    const isOpen = body.classList.contains('open');
+    body.classList.toggle('open', !isOpen);
+    toggle.classList.toggle('open', !isOpen);
+  }
+
+  // Progress bar
+  window.addEventListener('scroll', () => {
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    document.getElementById('progress').style.width = (window.scrollY / total * 100) + '%';
+  });
+
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08 });
+  reveals.forEach(r => obs.observe(r));
+
+  // Quiz
+  const feedbacks = {
+    q1: {
+      ok: "Correct. The teacher's knowledge gets distilled into a small student model that can run within the L1 time budget — retaining most of the accuracy benefit.",
+      nope: "Not quite. The large model can't run inline at L1 speeds. Distillation lets you compress its knowledge into a fast student model without losing much accuracy."
+    },
+    q2: {
+      ok: "Correct. Soft labels reveal the teacher's 'uncertainty' — how close the runner-up answers were. A beam with 22% probability is almost right; hard labels would throw that information away.",
+      nope: "Not quite. The key benefit is information richness — soft probabilities tell the student about relative similarities between outputs, enabling better generalization."
+    },
+    q3: {
+      ok: "Correct. The teacher trains offline in the Non-RT RIC where compute and time are available. The distilled student then gets deployed to DU or RU for real-time use.",
+      nope: "Not quite. Training and inference happen at very different timescales in O-RAN. Teacher training is offline in the Non-RT RIC; student inference runs in the DU/RU."
+    }
+  };
+
+  function answer(qid, btn, isCorrect, fbId) {
+    const container = document.getElementById(qid);
+    if (container.classList.contains('locked')) return;
+    container.classList.add('locked');
+
+    const opts = container.querySelectorAll('.quiz-opt');
+    opts.forEach(o => o.classList.add('locked'));
+    btn.classList.add(isCorrect ? 'correct' : 'wrong');
+
+    const fb = document.getElementById(fbId);
+    fb.textContent = isCorrect ? '✓ ' + feedbacks[qid].ok : '✗ ' + feedbacks[qid].nope;
+    fb.className = 'quiz-feedback show ' + (isCorrect ? 'ok' : 'nope');
+  }
+</script>
+</body>
+</html>
