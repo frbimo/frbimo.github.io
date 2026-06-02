@@ -791,18 +791,28 @@ beam: () => {
   canvas.style.cursor = 'grab';
 
   // ── Draw helpers ───────────────────────────────────────────────────────────
-  // angle sets the pointing direction; lobe is symmetric around it
+  // Narrow lobe (hbw=0.20 ≈ ±11°) so a 17° tilt is unmistakably visible
   function drawLobe(ox, oy, angle, rgb, alpha) {
-    const lobeLen=W*0.42, hbw=0.38;
+    const lobeLen=W*0.44, hbw=0.20;
     cx.save(); cx.translate(ox,oy); cx.rotate(angle);
     cx.beginPath(); cx.moveTo(0,0);
-    for (let a=-hbw; a<=hbw; a+=0.012) {
+    for (let a=-hbw; a<=hbw; a+=0.008) {
       const g=Math.pow(Math.cos(a*Math.PI/(2*hbw)),2);
       cx.lineTo(lobeLen*g*Math.cos(a), lobeLen*g*Math.sin(a));
     }
     cx.closePath();
-    cx.fillStyle=`rgba(${rgb},${alpha*.2})`; cx.fill();
-    cx.strokeStyle=`rgba(${rgb},${alpha*.85})`; cx.lineWidth=1.5; cx.stroke();
+    cx.fillStyle=`rgba(${rgb},${alpha*.3})`; cx.fill();
+    cx.strokeStyle=`rgba(${rgb},${alpha*.9})`; cx.lineWidth=1.5; cx.stroke();
+    // Boresight centre line through the lobe — the primary direction indicator
+    cx.strokeStyle=`rgba(${rgb},${alpha*.7})`; cx.lineWidth=1.5;
+    cx.beginPath(); cx.moveTo(0,0); cx.lineTo(lobeLen*1.05, 0); cx.stroke();
+    // Arrowhead at lobe tip
+    cx.fillStyle=`rgba(${rgb},${alpha*.8})`;
+    cx.beginPath();
+    cx.moveTo(lobeLen*1.05, 0);
+    cx.lineTo(lobeLen*0.92, -7);
+    cx.lineTo(lobeLen*0.92,  7);
+    cx.closePath(); cx.fill();
     cx.restore();
   }
 
@@ -888,9 +898,12 @@ beam: () => {
     cx.strokeStyle=`rgba(0,229,160,${footStrokeA})`; cx.lineWidth=1.5; cx.stroke();
     cx.restore();
 
-    // Dashed center-ray from antenna to footprint
-    cx.strokeStyle='rgba(0,229,160,0.2)'; cx.lineWidth=1; cx.setLineDash([4,5]);
-    cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(footPropX, groundY); cx.stroke();
+    // Dashed ray in the ACTUAL tilt direction (matches the lobe boresight)
+    const rayLen = W*0.60;
+    const rayEndX = ox + Math.cos(tilt)*rayLen;
+    const rayEndY = oy + Math.sin(tilt)*rayLen;
+    cx.strokeStyle='rgba(0,229,160,0.18)'; cx.lineWidth=1; cx.setLineDash([4,5]);
+    cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(rayEndX, rayEndY); cx.stroke();
     cx.setLineDash([]);
 
     // ── Coverage range bar (always visible below ground line) ────────────────
