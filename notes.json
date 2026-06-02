@@ -1,0 +1,48 @@
+[
+  {
+    "title": "How to Add Notes",
+    "file": "notes/how-to-add-notes.md",
+    "category": "Meta"
+  },
+  {
+    "title": "5G Core Network: NSA vs. SA",
+    "file": "notes/5g-basics.md",
+    "category": "5G / Telecom"
+  },
+  {
+    "title": "Channel, Channel ...",
+    "file": "notes/5g-channel.md",
+    "category": "5G / Telecom"
+  },
+  {
+    "title": "RF Learning Roadmap",
+    "file": "pages/rf-learning-roadmap.html",
+    "category": "RF & Wireless",
+    "type": "page"
+  },
+  {
+    "title": "The Role of RDF/OWL in IBN",
+    "file": "notes/intent-based-management.md",
+    "category": "Intent-Based Networking"
+  },
+  {
+    "title": "Custom Domain Ontology",
+    "file": "notes/intent-based-management-ontology.md",
+    "category": "Intent-Based Networking"
+  },
+  {
+    "title": "OWL/RDF Knowledge Graph as RAG Pipeline",
+    "file": "notes/intent-based-management-owl.md",
+    "category": "Intent-Based Networking"
+  },
+  {
+    "title": "SMO + NonRT RIC Installation (Rel. L)",
+    "file": "notes/smo-installation.md",
+    "category": "O-RAN"
+  },
+  {
+    "title": "Spiking Neural Network (SNN)",
+    "file": "notes/snn.md",
+    "category": "AI / ML"
+  }
+]

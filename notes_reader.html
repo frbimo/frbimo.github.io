@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning Notes</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <style>
+        :root {
+            --bg:          #0d1117;
+            --bg-sidebar:  #161b22;
+            --border:      #30363d;
+            --text:        #e6edf3;
+            --text-muted:  #8b949e;
+            --accent:      #58a6ff;
+            --sidebar-w:   260px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+        }
+
+        /* ── Sidebar ── */
+        #sidebar {
+            width: var(--sidebar-w);
+            min-width: var(--sidebar-w);
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        #sidebar-header {
+            padding: 18px 16px 14px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        #sidebar-back {
+            display: inline-block;
+            font-size: 0.75em;
+            color: var(--text-muted);
+            text-decoration: none;
+            margin-bottom: 10px;
+        }
+
+        #sidebar-back:hover { color: var(--accent); }
+
+        #sidebar-title {
+            font-size: 0.93em;
+            font-weight: 600;
+        }
+
+        #sidebar-count {
+            font-size: 0.72em;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        #nav-tree { padding: 6px 0; }
+
+        .cat-label {
+            padding: 10px 16px 3px;
+            font-size: 0.67em;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .nav-link {
+            display: block;
+            padding: 5px 16px 5px 22px;
+            font-size: 0.84em;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-left: 2px solid transparent;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .nav-link:hover {
+            color: var(--text);
+            background: rgba(255,255,255,0.04);
+        }
+
+        .nav-link.active {
+            color: var(--accent);
+            border-left-color: var(--accent);
+            background: rgba(88,166,255,0.07);
+        }
+
+        .nav-link.nav-page { display: flex; justify-content: space-between; align-items: center; }
+        .nav-page-icon { font-size: 0.75em; opacity: 0.5; flex-shrink: 0; margin-left: 4px; }
+
+        /* ── Main ── */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #topbar {
+            display: flex;
+            align-items: center;
+            height: 52px;
+            padding: 0 32px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.82em;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            gap: 8px;
+        }
+
+        #menu-btn {
+            display: none;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 4px;
+            padding: 3px 9px;
+            font-size: 0.85em;
+            cursor: pointer;
+            margin-right: 6px;
+        }
+
+        #content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 44px 52px;
+        }
+
+        #markdown-body {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* ── Markdown ── */
+        #markdown-body h1 {
+            font-size: 1.85em;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.3em;
+            margin-bottom: 0.8em;
+        }
+
+        #markdown-body h2 {
+            font-size: 1.4em;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.2em;
+            margin: 1.8em 0 0.7em;
+        }
+
+        #markdown-body h3 {
+            font-size: 1.15em;
+            font-weight: 600;
+            margin: 1.5em 0 0.6em;
+        }
+
+        #markdown-body h4 { font-size: 1em; font-weight: 600; margin: 1.2em 0 0.5em; }
+        #markdown-body h5, #markdown-body h6 { font-size: 0.9em; font-weight: 600; margin: 1em 0 0.4em; }
+
+        #markdown-body p { margin-bottom: 0.9em; line-height: 1.75; color: #c9d1d9; }
+
+        #markdown-body ul, #markdown-body ol { padding-left: 1.8em; margin-bottom: 0.9em; }
+        #markdown-body li { margin-bottom: 0.35em; line-height: 1.7; color: #c9d1d9; }
+        #markdown-body li > ul, #markdown-body li > ol { margin-top: 0.2em; margin-bottom: 0; }
+
+        #markdown-body a { color: var(--accent); text-decoration: none; }
+        #markdown-body a:hover { text-decoration: underline; }
+
+        #markdown-body blockquote {
+            border-left: 3px solid var(--border);
+            padding: 0.4em 1em;
+            color: var(--text-muted);
+            margin: 1em 0;
+        }
+
+        #markdown-body code:not(pre > code) {
+            background: rgba(110,118,129,0.2);
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        #markdown-body pre {
+            background: #161b22;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+
+        #markdown-body pre > code {
+            font-size: 0.84em;
+            line-height: 1.6;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        #markdown-body table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+            font-size: 0.9em;
+        }
+
+        #markdown-body th, #markdown-body td {
+            border: 1px solid var(--border);
+            padding: 7px 12px;
+            text-align: left;
+        }
+
+        #markdown-body th { background: var(--bg-sidebar); font-weight: 600; }
+        #markdown-body tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+        #markdown-body img { max-width: 100%; border-radius: 6px; }
+        #markdown-body hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+
+        #markdown-body input[type="checkbox"] {
+            margin-right: 5px;
+            pointer-events: none;
+        }
+
+        .welcome { color: var(--text-muted); padding: 60px 0; }
+        .welcome h2 { font-size: 1.2em; color: var(--text); margin-bottom: 6px; }
+
+        .load-error { color: #f85149; padding: 20px 0; font-size: 0.9em; }
+
+        /* ── Mobile ── */
+        @media (max-width: 720px) {
+            #sidebar {
+                position: fixed;
+                top: 0; left: -100%;
+                height: 100%;
+                z-index: 50;
+                transition: left 0.2s ease;
+                box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+            }
+            #sidebar.open { left: 0; }
+            #menu-btn { display: block; }
+            #content { padding: 24px 20px; }
+            #topbar { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav id="sidebar">
+    <div id="sidebar-header">
+        <a id="sidebar-back" href="index.html">&#8592; Back to Home</a>
+        <div id="sidebar-title">Learning Notes</div>
+        <div id="sidebar-count"></div>
+    </div>
+    <div id="nav-tree"></div>
+</nav>
+
+<div id="main">
+    <div id="topbar">
+        <button id="menu-btn" onclick="toggleSidebar()">Menu</button>
+        <span id="breadcrumb">Select a note</span>
+    </div>
+    <div id="content">
+        <div id="markdown-body">
+            <div class="welcome">
+                <h2>Welcome</h2>
+                <p>Select a note from the sidebar to start reading.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script>
+    marked.use({ gfm: true, breaks: false });
+
+    let allNotes = [];
+    let activeFile = null;
+
+    async function boot() {
+        try {
+            const res = await fetch('notes.json');
+            if (!res.ok) throw new Error('notes.json returned ' + res.status);
+            allNotes = await res.json();
+        } catch (e) {
+            document.getElementById('nav-tree').innerHTML =
+                '<p style="padding:16px;font-size:.82em;color:#f85149">' + esc(e.message) + '</p>';
+            return;
+        }
+
+        buildNav(allNotes);
+
+        const count = allNotes.length;
+        document.getElementById('sidebar-count').textContent =
+            count + ' note' + (count !== 1 ? 's' : '');
+
+        routeFromHash();
+    }
+
+    function buildNav(notes) {
+        const groups = {};
+        for (const note of notes) {
+            const cat = note.category || 'General';
+            (groups[cat] = groups[cat] || []).push(note);
+        }
+
+        const tree = document.getElementById('nav-tree');
+        tree.innerHTML = Object.entries(groups).map(([cat, items]) =>
+            '<div class="cat-label">' + esc(cat) + '</div>' +
+            items.map(n => n.type === 'page'
+                ? '<a class="nav-link nav-page" href="' + esc(n.file) + '" target="_blank" rel="noopener">' +
+                  esc(n.title) + '<span class="nav-page-icon">&#x2197;</span></a>'
+                : '<a class="nav-link" href="#' + encodeURIComponent(n.file) +
+                  '" data-file="' + esc(n.file) + '">' + esc(n.title) + '</a>'
+            ).join('')
+        ).join('');
+
+        tree.addEventListener('click', e => {
+            const link = e.target.closest('.nav-link');
+            if (!link || link.classList.contains('nav-page')) return;
+            e.preventDefault();
+            loadNote(link.dataset.file);
+            if (window.innerWidth <= 720)
+                document.getElementById('sidebar').classList.remove('open');
+        });
+    }
+
+    async function loadNote(file) {
+        if (activeFile === file) return;
+        activeFile = file;
+
+        document.querySelectorAll('.nav-link').forEach(el =>
+            el.classList.toggle('active', el.dataset.file === file)
+        );
+
+        history.replaceState(null, '', '#' + encodeURIComponent(file));
+
+        const note = allNotes.find(n => n.file === file);
+        document.getElementById('breadcrumb').textContent =
+            note ? note.category + ' / ' + note.title : file;
+
+        const body = document.getElementById('markdown-body');
+        body.innerHTML = '<p style="color:var(--text-muted);padding:20px 0">Loading...</p>';
+
+        try {
+            const res = await fetch(file);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const md = await res.text();
+            body.innerHTML = DOMPurify.sanitize(marked.parse(md));
+            body.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+            document.getElementById('content').scrollTop = 0;
+        } catch (e) {
+            body.innerHTML = '<p class="load-error">Could not load <code>' +
+                esc(file) + '</code>: ' + esc(e.message) + '</p>';
+        }
+    }
+
+    function routeFromHash() {
+        const hash = decodeURIComponent(location.hash.slice(1));
+        if (hash) loadNote(hash);
+    }
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function esc(str) {
+        return String(str).replace(/[&<>"']/g, c =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+        );
+    }
+
+    window.addEventListener('hashchange', routeFromHash);
+
+    document.getElementById('main').addEventListener('click', () => {
+        if (window.innerWidth <= 720)
+            document.getElementById('sidebar').classList.remove('open');
+    });
+
+    boot();
+</script>
+</body>
+</html>
