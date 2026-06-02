@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RF Fundamentals Roadmap — 5G Simulator Engineer</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600;700;800&display=swap');
 :root {
   --bg:#0a0c10; --surface:#0f1318; --border:#1e2530;
   --accent:#00e5a0; --accent2:#0099ff; --accent3:#ff6b35; --warn:#ffd166;
@@ -18,7 +18,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 header{border-left:3px solid var(--accent);padding-left:20px;margin-bottom:48px;}
 .tag{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
-h1{font-family:'Syne',sans-serif;font-size:clamp(24px,5vw,42px);font-weight:800;color:#fff;line-height:1.1;margin-bottom:12px;}
+h1{font-family:'Inter',sans-serif;font-size:clamp(24px,5vw,42px);font-weight:800;color:#fff;line-height:1.1;margin-bottom:12px;}
 h1 span{color:var(--accent);}
 .subtitle{color:var(--muted);max-width:600px;font-size:12px;}
 
@@ -29,11 +29,11 @@ h1 span{color:var(--accent);}
 
 .phase{margin-bottom:40px;}
 .phase-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
-.phase-number{font-family:'Syne',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;color:var(--bg);background:var(--accent);padding:2px 8px;border-radius:2px;flex-shrink:0;}
+.phase-number{font-family:'Inter',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;color:var(--bg);background:var(--accent);padding:2px 8px;border-radius:2px;flex-shrink:0;}
 .phase-number.p2{background:var(--accent2);}
 .phase-number.p3{background:var(--accent3);}
 .phase-number.p4{background:var(--warn);color:#1a1a1a;}
-.phase-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#fff;}
+.phase-title{font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:#fff;}
 .phase-goal{font-size:11px;color:var(--muted);margin-left:auto;text-align:right;max-width:200px;}
 .phase-body{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;}
 
@@ -50,7 +50,7 @@ h1 span{color:var(--accent);}
 .card.expanded{border-color:rgba(0,229,160,.4);grid-column:1/-1;}
 .card.expanded::after{opacity:1;}
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;}
-.card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#fff;}
+.card-title{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:#fff;}
 .card-badge{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 6px;border-radius:2px;flex-shrink:0;}
 .badge-must{background:rgba(0,229,160,.15);color:var(--accent);border:1px solid rgba(0,229,160,.3);}
 .badge-sim{background:rgba(0,153,255,.15);color:var(--accent2);border:1px solid rgba(0,153,255,.3);}
@@ -58,7 +58,7 @@ h1 span{color:var(--accent);}
 .card-summary{color:var(--muted);font-size:11px;}
 .card-detail{display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
 .card.expanded .card-detail{display:block;}
-.card-detail h4{font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;margin-top:12px;}
+.card-detail h4{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;margin-top:12px;}
 .card-detail h4:first-child{margin-top:0;}
 .card-detail p{color:var(--text);font-size:12px;margin-bottom:6px;}
 .why-box{background:rgba(255,209,102,.07);border-left:2px solid var(--warn);padding:10px 12px;border-radius:0 4px 4px 0;margin-top:8px;}
@@ -89,7 +89,7 @@ ul.detail-list li::before{content:'→';position:absolute;left:0;color:var(--mut
 
 /* DEPENDENCY MAP */
 .dep-map{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;margin-top:48px;}
-.dep-map h2{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#fff;margin-bottom:20px;}
+.dep-map h2{font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:#fff;margin-bottom:20px;}
 .dep-flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:11px;}
 .dep-node{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--text);white-space:nowrap;}
 .dep-node.you{border-color:var(--accent);color:var(--accent);}
@@ -97,10 +97,10 @@ ul.detail-list li::before{content:'→';position:absolute;left:0;color:var(--mut
 
 /* QUICK REF */
 .quick-ref{margin-top:40px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px;}
-.quick-ref h2{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;}
+.quick-ref h2{font-family:'Inter',sans-serif;font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;}
 .glossary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
 .g-item{border-left:2px solid var(--border);padding-left:10px;}
-.g-term{font-size:11px;color:var(--accent);font-weight:700;font-family:'Syne',sans-serif;}
+.g-term{font-size:11px;color:var(--accent);font-weight:700;font-family:'Inter',sans-serif;}
 .g-def{font-size:11px;color:var(--muted);}
 footer{margin-top:60px;text-align:center;color:var(--muted);font-size:10px;letter-spacing:1.5px;}
 </style>
