@@ -791,13 +791,14 @@ beam: () => {
   canvas.style.cursor = 'grab';
 
   // ── Draw helpers ───────────────────────────────────────────────────────────
-  function drawLobe(ox, oy, angle, tiltAngle, rgb, alpha) {
-    const lobeLen=W*0.38, hbw=0.38;
+  // angle sets the pointing direction; lobe is symmetric around it
+  function drawLobe(ox, oy, angle, rgb, alpha) {
+    const lobeLen=W*0.42, hbw=0.38;
     cx.save(); cx.translate(ox,oy); cx.rotate(angle);
     cx.beginPath(); cx.moveTo(0,0);
     for (let a=-hbw; a<=hbw; a+=0.012) {
       const g=Math.pow(Math.cos(a*Math.PI/(2*hbw)),2);
-      cx.lineTo(lobeLen*g*Math.cos(a+tiltAngle*.5), lobeLen*g*Math.sin(a+tiltAngle*.5));
+      cx.lineTo(lobeLen*g*Math.cos(a), lobeLen*g*Math.sin(a));
     }
     cx.closePath();
     cx.fillStyle=`rgba(${rgb},${alpha*.2})`; cx.fill();
@@ -856,43 +857,76 @@ beam: () => {
     if (autoPlay) {
       az += 0.005*autoDir;
       if (az>AZ_MAX*.75||az<-AZ_MAX*.75) autoDir*=-1;
-      tilt = 0.06 + 0.06*Math.sin(Date.now()*.0004);
+      tilt = 0.05 + 0.07*Math.sin(Date.now()*.00045);
     }
 
-    const groundY=H*.78, ox=W*.26, oy=H*.44;
+    const groundY=H*.80, ox=W*.22, oy=H*.42;
     const azDeg=(az*180/Math.PI), tiltDeg=(tilt*180/Math.PI);
 
-    // Ground
+    // ── Ground line ─────────────────────────────────────────────────────────
     cx.strokeStyle='#1e2530'; cx.lineWidth=1;
-    cx.beginPath(); cx.moveTo(0,groundY); cx.lineTo(W*.68,groundY); cx.stroke();
+    cx.beginPath(); cx.moveTo(0,groundY); cx.lineTo(W*.72,groundY); cx.stroke();
 
-    // Coverage footprint on ground — gets smaller / farther with tilt changes
-    const rangeEst = Math.min((groundY-oy)/Math.tan(tilt+0.04), W*.38);
-    const footCX   = ox + Math.cos(az)*rangeEst;
-    const footRX   = Math.max(8, 42 - tiltDeg*1.8) * Math.abs(Math.cos(az));
-    cx.save();
-    cx.beginPath(); cx.ellipse(footCX, groundY, Math.max(6,footRX), 6, 0, 0, Math.PI*2);
-    cx.fillStyle='rgba(0,229,160,.1)'; cx.fill();
-    cx.strokeStyle='rgba(0,229,160,.32)'; cx.lineWidth=1.2; cx.stroke();
-    cx.restore();
+    // ── Beam geometry: side view uses TILT as the lobe direction ─────────────
+    // tilt=0 → beam is horizontal; tilt>0 → beam angles down toward ground
+    const sinT=Math.sin(tilt), cosT=Math.cos(tilt);
+    const hitDist = sinT>0.008 ? (groundY-oy)/sinT : W*2;
+    const hitX    = ox + cosT * Math.min(hitDist, W*0.58);
+    const hitsGround = hitDist <= W*0.58;
 
-    // Tower
+    // Horizontal reference line (0° tilt reference)
+    cx.strokeStyle='rgba(255,255,255,0.1)'; cx.lineWidth=1; cx.setLineDash([4,6]);
+    cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(ox+68,oy); cx.stroke();
+    cx.setLineDash([]);
+    cx.fillStyle='rgba(255,255,255,0.2)'; cx.font='7px Space Mono';
+    cx.fillText('0°',ox+70,oy+3);
+
+    // Tilt angle arc (shows the angle between horizontal and beam direction)
+    if (tilt>0.01) {
+      cx.strokeStyle='rgba(255,209,102,0.55)'; cx.lineWidth=1.5;
+      cx.beginPath(); cx.arc(ox,oy,46,0,tilt); cx.stroke();
+      // angle label inside arc
+      const midA=tilt/2;
+      cx.fillStyle='rgba(255,209,102,0.85)'; cx.font='bold 9px Space Mono';
+      cx.fillText(`${tiltDeg.toFixed(0)}°`, ox+52, oy+Math.sin(midA)*46+4);
+    }
+
+    // Dashed beam center ray to ground hit (makes geometry unmistakable)
+    cx.strokeStyle='rgba(0,229,160,0.22)'; cx.lineWidth=1; cx.setLineDash([4,5]);
+    const rayEndY = hitsGround ? groundY : oy+sinT*W*0.58;
+    cx.beginPath(); cx.moveTo(ox,oy); cx.lineTo(hitX, rayEndY); cx.stroke();
+    cx.setLineDash([]);
+
+    // Ground footprint ellipse — only when beam actually hits the ground
+    if (hitsGround) {
+      // Footprint width: larger when beam grazes at shallow angle, smaller when steep
+      const footRx=Math.max(9, 55-tiltDeg*2.6);
+      cx.save();
+      cx.beginPath(); cx.ellipse(hitX, groundY, footRx, 7, 0, 0, Math.PI*2);
+      cx.fillStyle='rgba(0,229,160,0.13)'; cx.fill();
+      cx.strokeStyle='rgba(0,229,160,0.45)'; cx.lineWidth=1.5; cx.stroke();
+      cx.restore();
+      // Range label below footprint
+      cx.fillStyle='rgba(0,229,160,0.45)'; cx.font='8px Space Mono';
+      cx.fillText(`↔ ${Math.round((hitX-ox)*3)}m range`, hitX-28, groundY+18);
+    }
+
+    // ── Tower ───────────────────────────────────────────────────────────────
     cx.strokeStyle='#00e5a0'; cx.lineWidth=2;
     cx.beginPath(); cx.moveTo(ox,groundY); cx.lineTo(ox,oy); cx.stroke();
     cx.fillStyle='#00e5a0'; cx.beginPath(); cx.arc(ox,oy,6,0,Math.PI*2); cx.fill();
 
-    // Back lobe, main lobe
-    drawLobe(ox,oy,az+Math.PI,tilt,'0,153,255',0.25);
-    drawLobe(ox,oy,az,tilt,'0,229,160',1.0);
+    // Back lobe (up-left) and main lobe (angled down by tilt)
+    drawLobe(ox, oy, tilt+Math.PI, '0,153,255', 0.25);
+    drawLobe(ox, oy, tilt,         '0,229,160', 1.0);
 
-    // ── Top-down inset ──────────────────────────────────────────────────────
-    const inR=Math.min(H*.27,62);
-    drawAzInset(W*.84, H*.30, inR);
+    // ── Top-down azimuth inset ───────────────────────────────────────────────
+    const inR=Math.min(H*.26,60);
+    drawAzInset(W*.85, H*.28, inR);
 
-    // ── Tilt meter ──────────────────────────────────────────────────────────
-    const mX=W*.70, mY=groundY-H*.50, mW=11, mH=H*.48;
+    // ── Tilt meter (vertical bar) ────────────────────────────────────────────
+    const mX=W*.72, mY=H*.12, mW=11, mH=H*.60;
     drawTiltMeter(mX, mY, mW, mH);
-    // tilt readout above meter
     cx.fillStyle=activeCtrl==='tilt'?'#ffd166':'#7a7040';
     cx.font='8px Space Mono';
     cx.fillText('DOWN-TILT', mX-10, mY-16);
@@ -900,18 +934,16 @@ beam: () => {
     cx.font='bold 15px Space Mono';
     cx.fillText(`${tiltDeg.toFixed(1)}°`, mX-10, mY-4);
 
-    // ── Azimuth readout (top-left) ──────────────────────────────────────────
-    const azHl=activeCtrl==='az';
-    cx.fillStyle=azHl?'#00e5a0':'#3a7060';
+    // ── Azimuth readout (top-left) ───────────────────────────────────────────
+    cx.fillStyle=activeCtrl==='az'?'#00e5a0':'#3a7060';
     cx.font='8px Space Mono'; cx.fillText('AZIMUTH',6,15);
-    cx.fillStyle=azHl?'#00e5a0':'#5aaa80';
+    cx.fillStyle=activeCtrl==='az'?'#00e5a0':'#5aaa80';
     cx.font='bold 17px Space Mono';
     cx.fillText(`${azDeg>=0?'+':''}${azDeg.toFixed(1)}°`,6,34);
 
-    // ── Hint text (bottom) ──────────────────────────────────────────────────
+    // ── Hint (bottom) ────────────────────────────────────────────────────────
     if (!isDragging) {
-      cx.fillStyle='rgba(74,90,106,.65)';
-      cx.font='9px Space Mono';
+      cx.fillStyle='rgba(74,90,106,.6)'; cx.font='9px Space Mono';
       cx.fillText('drag  ←→  azimuth     drag  ↕  tilt',6,H-7);
     } else if (activeCtrl) {
       cx.fillStyle=activeCtrl==='az'?'rgba(0,229,160,.85)':'rgba(255,209,102,.85)';
