@@ -1,0 +1,2403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPU Acceleration Engineering Guide</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --accent4: #f59e0b;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --cpu-color: #ef4444;
+    --gpu-color: #00d4ff;
+    --code-bg: #0d1117;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,14,26,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; gap: 1.5rem;
+    height: 56px;
+  }
+  nav .logo { font-weight: 700; font-size: 1rem; color: var(--accent); letter-spacing: .05em; }
+  nav a { font-size: .8rem; color: var(--text-dim); text-decoration: none; transition: color .2s; }
+  nav a:hover { color: var(--accent); }
+
+  /* ── LAYOUT ── */
+  .page { max-width: 1100px; margin: 0 auto; padding: 80px 2rem 4rem; }
+
+  /* ── HERO ── */
+  .hero {
+    text-align: center; padding: 5rem 1rem 4rem;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,212,255,.08) 0%, transparent 70%);
+  }
+  .hero-badge {
+    display: inline-block;
+    font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent); border: 1px solid rgba(0,212,255,.3);
+    background: rgba(0,212,255,.06); border-radius: 999px;
+    padding: .3rem 1rem; margin-bottom: 1.5rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; line-height: 1.15;
+    background: linear-gradient(135deg, #fff 30%, var(--accent) 70%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 1rem;
+  }
+  .hero p { font-size: 1.1rem; color: var(--text-dim); max-width: 640px; margin: 0 auto 2.5rem; }
+
+  /* ── SECTION HEADERS ── */
+  .section { padding: 4rem 0; border-top: 1px solid var(--border); }
+  .section-num {
+    font-size: .72rem; font-weight: 700; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: .5rem;
+  }
+  .section h2 {
+    font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 700;
+    margin-bottom: .75rem; color: #fff;
+  }
+  .section .lead { color: var(--text-dim); margin-bottom: 2rem; font-size: 1rem; }
+
+  /* ── MINDSET CARDS ── */
+  .mindset-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;
+  }
+  .mindset-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem;
+    transition: border-color .3s, transform .3s;
+  }
+  .mindset-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+  .mindset-card .icon { font-size: 2rem; margin-bottom: .75rem; }
+  .mindset-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: .4rem; color: #fff; }
+  .mindset-card p { font-size: .82rem; color: var(--text-dim); }
+
+  /* ── PIPELINE VIZ ── */
+  .pipeline-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 2rem; margin: 2rem 0; overflow: hidden;
+  }
+  .pipeline-title { font-size: .75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .12em; color: var(--text-dim); margin-bottom: 1.5rem; }
+  .pipeline {
+    display: flex; align-items: center; gap: 0; overflow-x: auto;
+  }
+  .pipeline-stage {
+    flex: 1; min-width: 110px; text-align: center; padding: 1rem .5rem;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; position: relative;
+    animation: fadeSlideIn .5s ease both;
+  }
+  .pipeline-stage + .pipeline-stage { margin-left: 6px; }
+  .pipeline-stage::after {
+    content: '→'; position: absolute; right: -14px; top: 50%; transform: translateY(-50%);
+    color: var(--accent); font-weight: 700; font-size: 1rem; z-index: 1;
+  }
+  .pipeline-stage:last-child::after { display: none; }
+  .pipeline-stage .phase-icon { font-size: 1.5rem; margin-bottom: .4rem; }
+  .pipeline-stage .phase-name { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .pipeline-stage .phase-time { font-size: .8rem; margin-top: .25rem; }
+  .stage-rf { border-color: var(--cpu-color); }
+  .stage-rf .phase-name { color: var(--cpu-color); }
+  .stage-kpi { border-color: var(--accent4); }
+  .stage-kpi .phase-name { color: var(--accent4); }
+  .stage-out { border-color: var(--accent3); }
+  .stage-out .phase-name { color: var(--accent3); }
+  .stage-ho { border-color: var(--accent2); }
+  .stage-ho .phase-name { color: var(--accent2); }
+
+  /* ── FLAME BAR ── */
+  .flame-section { margin: 2rem 0; }
+  .flame-label {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: .8rem; margin-bottom: .4rem; color: var(--text-dim);
+  }
+  .flame-label .name { color: var(--text); font-weight: 600; }
+  .flame-bar-bg {
+    height: 32px; background: var(--surface2); border-radius: 6px; overflow: hidden;
+    position: relative;
+  }
+  .flame-bar-fill {
+    height: 100%; border-radius: 6px;
+    display: flex; align-items: center; padding-left: 10px;
+    font-size: .72rem; font-weight: 700; color: #fff;
+    transition: width 1.5s cubic-bezier(.16,1,.3,1);
+  }
+  .flame-cpu { background: linear-gradient(90deg, var(--cpu-color), #f97316); }
+  .flame-gpu { background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+
+  /* ── CODE DIFF ── */
+  .code-diff {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  @media (max-width: 768px) { .code-diff { grid-template-columns: 1fr; } }
+  .code-pane {
+    background: var(--code-bg); border-radius: 10px;
+    border: 1px solid var(--border); overflow: hidden;
+  }
+  .code-pane-header {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .6rem 1rem; border-bottom: 1px solid var(--border);
+    font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+  }
+  .code-pane-header.before { color: var(--cpu-color); background: rgba(239,68,68,.04); }
+  .code-pane-header.after { color: var(--accent); background: rgba(0,212,255,.04); }
+  .code-pane pre {
+    padding: 1rem; font-size: .75rem; line-height: 1.6; overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    color: #abb2bf;
+  }
+  .code-pane pre .kw { color: #c678dd; }
+  .code-pane pre .fn { color: #61afef; }
+  .code-pane pre .str { color: #98c379; }
+  .code-pane pre .cmt { color: #5c6370; font-style: italic; }
+  .code-pane pre .num { color: #d19a66; }
+  .code-pane pre .deco { color: #e5c07b; }
+  .code-pane pre .hi { background: rgba(0,212,255,.08); border-left: 2px solid var(--accent); padding-left: 4px; }
+  .code-pane pre .hi-bad { background: rgba(239,68,68,.07); border-left: 2px solid var(--cpu-color); padding-left: 4px; }
+
+  /* ── STEP CARD ── */
+  .steps { display: flex; flex-direction: column; gap: 1.5rem; margin: 2rem 0; }
+  .step-card {
+    display: flex; gap: 1.25rem; align-items: flex-start;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem;
+    transition: border-color .3s;
+  }
+  .step-card:hover { border-color: var(--accent); }
+  .step-num {
+    flex-shrink: 0;
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: .95rem; color: #fff;
+  }
+  .step-body h3 { font-size: 1rem; font-weight: 700; margin-bottom: .35rem; color: #fff; }
+  .step-body p { font-size: .85rem; color: var(--text-dim); }
+  .step-body code {
+    display: inline-block; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: .15rem .5rem; font-size: .78rem;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    color: var(--accent); margin-top: .5rem;
+  }
+
+  /* ── GPU THREAD ANIMATION ── */
+  .thread-demo {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 2rem; margin: 2rem 0; overflow: hidden;
+  }
+  .thread-demo-title {
+    font-size: .75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .12em; color: var(--text-dim); margin-bottom: 1.5rem;
+  }
+  .thread-compare {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+  }
+  @media (max-width: 600px) { .thread-compare { grid-template-columns: 1fr; } }
+  .thread-side h4 {
+    font-size: .85rem; font-weight: 700; margin-bottom: 1rem; text-align: center;
+  }
+  .cpu-label { color: var(--cpu-color); }
+  .gpu-label { color: var(--gpu-color); }
+
+  /* CPU sequential animation */
+  .cpu-queue { display: flex; flex-direction: column; gap: 4px; }
+  .cpu-task {
+    height: 28px; border-radius: 5px;
+    background: linear-gradient(90deg, var(--cpu-color), #f97316);
+    display: flex; align-items: center; padding-left: 10px;
+    font-size: .72rem; font-weight: 700; color: #fff;
+    animation: cpuSequential 3s ease-in-out infinite;
+    opacity: .2; transform-origin: left;
+  }
+  .cpu-task:nth-child(1) { animation-delay: 0s; }
+  .cpu-task:nth-child(2) { animation-delay: .5s; }
+  .cpu-task:nth-child(3) { animation-delay: 1s; }
+  .cpu-task:nth-child(4) { animation-delay: 1.5s; }
+  .cpu-task:nth-child(5) { animation-delay: 2s; }
+  .cpu-task:nth-child(6) { animation-delay: 2.5s; }
+  @keyframes cpuSequential {
+    0%,100% { opacity:.15; }
+    20%, 80% { opacity: 1; }
+  }
+
+  /* GPU parallel animation */
+  .gpu-grid-wrap { position: relative; }
+  .gpu-blocks {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+  }
+  .gpu-block {
+    aspect-ratio: 1; border-radius: 4px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    animation: gpuParallel 1.8s ease-in-out infinite;
+  }
+  .gpu-block:nth-child(3n+1) { animation-delay: 0s; }
+  .gpu-block:nth-child(3n+2) { animation-delay: .1s; }
+  .gpu-block:nth-child(3n+3) { animation-delay: .2s; }
+  @keyframes gpuParallel {
+    0%,100% { opacity:.15; transform: scale(.85); }
+    50% { opacity: 1; transform: scale(1); }
+  }
+
+  /* ── PROFILING VIZ ── */
+  .nsys-trace {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0;
+    overflow: hidden;
+  }
+  .nsys-title { font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .12em; color: var(--text-dim); margin-bottom: 1rem; }
+  .nsys-row { margin-bottom: 8px; }
+  .nsys-row-label {
+    font-size: .72rem; font-weight: 600; color: var(--text-dim); margin-bottom: 3px;
+    display: flex; justify-content: space-between;
+  }
+  .nsys-row-bar { height: 22px; background: var(--surface); border-radius: 4px; overflow: hidden; }
+  .nsys-fill {
+    height: 100%; border-radius: 4px;
+    display: flex; align-items: center; padding-left: 8px;
+    font-size: .65rem; font-weight: 700; color: rgba(255,255,255,.9);
+    animation: growFill 1.2s ease both;
+  }
+  @keyframes growFill { from { width: 0 !important; } }
+  .nsys-rf-cpu { background: var(--cpu-color); }
+  .nsys-rf-gpu { background: var(--gpu-color); }
+  .nsys-kpi-cpu { background: #f97316; }
+  .nsys-kpi-gpu { background: var(--accent3); }
+  .nsys-out-cpu { background: #a78bfa; }
+  .nsys-out-gpu { background: #6d28d9; }
+
+  /* ── SPEEDUP CALLOUT ── */
+  .speedup-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .speedup-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem; text-align: center;
+    transition: border-color .3s;
+  }
+  .speedup-card:hover { border-color: var(--accent); }
+  .speedup-num {
+    font-size: 2.2rem; font-weight: 900;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    line-height: 1;
+  }
+  .speedup-label { font-size: .78rem; color: var(--text-dim); margin-top: .4rem; }
+  .speedup-phase { font-size: .65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--accent); margin-top: .25rem; }
+
+  /* ── DECISION TREE ── */
+  .decision-tree {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 2rem; margin: 2rem 0;
+  }
+  .decision-node {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.25rem;
+    margin: .5rem 0; position: relative;
+  }
+  .decision-node.root { border-color: var(--accent); }
+  .decision-node.yes { border-color: var(--accent3); margin-left: 2.5rem; }
+  .decision-node.no { border-color: var(--cpu-color); margin-left: 2.5rem; }
+  .decision-node .q { font-size: .82rem; font-weight: 600; color: #fff; }
+  .decision-node .ans { font-size: .72rem; color: var(--text-dim); margin-top: .25rem; }
+  .decision-node .badge {
+    display: inline-block; font-size: .65rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; padding: .15rem .5rem; border-radius: 4px; margin-right: .4rem;
+  }
+  .badge-yes { background: rgba(16,185,129,.15); color: var(--accent3); }
+  .badge-no { background: rgba(239,68,68,.12); color: var(--cpu-color); }
+
+  /* ── KERNEL ANATOMY ── */
+  .kernel-anatomy {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; margin: 1.5rem 0;
+  }
+  .kernel-header {
+    background: var(--surface); padding: .75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    font-size: .75rem; font-weight: 700; color: var(--accent);
+    display: flex; align-items: center; gap: .5rem;
+  }
+  .kernel-body { display: grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 640px) { .kernel-body { grid-template-columns: 1fr; } }
+  .kernel-segment {
+    padding: 1.25rem; border-right: 1px solid var(--border);
+  }
+  .kernel-segment:last-child { border-right: none; }
+  .kernel-segment h4 {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; margin-bottom: .75rem;
+  }
+  .kernel-segment pre {
+    font-size: .72rem; line-height: 1.7; overflow-x: auto;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    color: #abb2bf;
+  }
+
+  /* ── CHECKLIST ── */
+  .checklist { list-style: none; margin: 1rem 0; }
+  .checklist li {
+    display: flex; gap: .75rem; align-items: flex-start;
+    padding: .6rem 0; border-bottom: 1px solid rgba(30,58,95,.4);
+    font-size: .88rem;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .check-icon { flex-shrink: 0; margin-top: .1rem; }
+  .check-done { color: var(--accent3); }
+  .check-warn { color: var(--accent4); }
+
+  /* ── CALLOUT BOX ── */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: rgba(0,212,255,.05);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+    font-size: .88rem; color: var(--text-dim);
+  }
+  .callout strong { color: var(--accent); }
+  .callout.warn { border-color: var(--accent4); background: rgba(245,158,11,.05); }
+  .callout.warn strong { color: var(--accent4); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+  .animate-in.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── GPU WAVE ANIMATION (hero) ── */
+  .gpu-wave {
+    position: relative; height: 80px; margin: 2rem auto;
+    max-width: 600px; overflow: visible;
+  }
+  .gpu-wave canvas { width: 100%; height: 100%; }
+
+  /* ── EXPLAINER BOXES ── */
+  .explainer-box {
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    border-radius: 14px; padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+  .explainer-header {
+    display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.25rem;
+  }
+  .explainer-icon { font-size: 1.6rem; flex-shrink: 0; }
+  .explainer-title { font-size: 1rem; font-weight: 700; color: #fff; }
+  .explainer-sub { font-size: .78rem; color: var(--text-dim); margin-top: .2rem; }
+  .explainer-body {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+    gap: 1rem; margin-bottom: 1.25rem;
+  }
+  .explainer-concept {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem;
+  }
+  .ec-label {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--accent); margin-bottom: .4rem;
+  }
+  .ec-text { font-size: .82rem; color: var(--text-dim); line-height: 1.6; }
+  .ec-text code {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 3px; padding: .1rem .35rem; font-size: .75rem; color: var(--accent3);
+    font-family: 'JetBrains Mono', Consolas, monospace;
+  }
+
+  /* cycle tiling animation */
+  .tiling-compare {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 640px) { .tiling-compare { grid-template-columns: 1fr; } }
+  .tiling-side-label {
+    font-size: .8rem; font-weight: 700; margin-bottom: .6rem; text-align: center;
+  }
+  .tiling-cpu-track {
+    display: flex; flex-wrap: wrap; gap: 3px;
+    background: var(--surface); border-radius: 8px; padding: .75rem;
+    min-height: 80px;
+  }
+  .tiling-cpu-cell {
+    width: 14px; height: 14px; border-radius: 3px;
+    background: var(--surface2); border: 1px solid var(--border);
+    transition: background .15s, border-color .15s;
+  }
+  .tiling-cpu-cell.active {
+    background: var(--cpu-color);
+    border-color: var(--cpu-color);
+    box-shadow: 0 0 6px rgba(239,68,68,.6);
+  }
+  .tiling-cpu-cell.done {
+    background: rgba(239,68,68,.2);
+    border-color: rgba(239,68,68,.3);
+  }
+  .tiling-cpu-pointer {
+    font-size: .7rem; color: var(--cpu-color); text-align: center; margin-top: .4rem;
+    height: 18px;
+  }
+  .tiling-gpu-grid {
+    display: flex; flex-wrap: wrap; gap: 3px;
+    background: var(--surface); border-radius: 8px; padding: .75rem;
+    min-height: 80px;
+  }
+  .tiling-gpu-cell {
+    width: 14px; height: 14px; border-radius: 3px;
+    background: var(--surface2); border: 1px solid var(--border);
+    transition: background .05s, border-color .05s;
+  }
+  .tiling-gpu-cell.blast {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 5px rgba(0,212,255,.5);
+  }
+  .tiling-stat {
+    font-size: .75rem; font-weight: 700; text-align: center; margin-top: .6rem;
+  }
+  .tiling-math {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.25rem; margin-top: 1rem;
+  }
+  .tiling-math-title {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--text-dim); margin-bottom: .75rem;
+  }
+  .tiling-math-row {
+    display: grid; grid-template-columns: 1.2fr 3fr 1fr;
+    gap: .75rem; padding: .5rem 0;
+    border-bottom: 1px solid rgba(30,58,95,.5);
+    font-size: .78rem; align-items: center;
+  }
+  .tiling-math-row:last-of-type { border-bottom: none; }
+  .tm-label { font-weight: 700; color: var(--text); }
+  .tm-calc { color: var(--text-dim); }
+  .tm-result { font-weight: 700; text-align: right; }
+  .tiling-math-note {
+    font-size: .75rem; color: var(--text-dim); margin-top: .75rem;
+    padding-top: .75rem; border-top: 1px solid var(--border);
+  }
+
+  /* SM / warp animation */
+  .sm-anim-wrap {
+    margin: 1rem 0;
+  }
+  .sm-anim-title {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--text-dim); margin-bottom: .75rem;
+  }
+  .sm-anim-body {
+    display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap;
+  }
+  .sm-box {
+    background: var(--surface); border: 2px solid var(--accent2);
+    border-radius: 10px; padding: 1rem; min-width: 220px; flex: 1;
+  }
+  .sm-box-label {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--accent2); margin-bottom: .75rem;
+  }
+  .warp-rows { display: flex; flex-direction: column; gap: 6px; }
+  .warp-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .warp-row-label {
+    font-size: .68rem; color: var(--text-dim); min-width: 52px;
+  }
+  .warp-threads {
+    display: flex; gap: 2px;
+  }
+  .warp-thread {
+    width: 8px; height: 18px; border-radius: 2px;
+    background: var(--surface2); border: 1px solid var(--border);
+    transition: background .25s, border-color .25s;
+  }
+  .warp-thread.running { background: var(--accent3); border-color: var(--accent3); }
+  .warp-thread.waiting { background: var(--accent4); border-color: var(--accent4); }
+  .warp-thread.ready   { background: var(--accent2); border-color: var(--accent2); opacity: .5; }
+  .warp-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+  .warp-running { background: var(--accent3); }
+  .warp-waiting { background: var(--accent4); }
+  .warp-ready   { background: var(--accent2); }
+  .sm-anim-legend {
+    display: flex; flex-direction: column; gap: .5rem; font-size: .78rem; color: var(--text-dim);
+  }
+  .sm-legend-row { display: flex; align-items: center; }
+  .sm-status {
+    margin-top: .75rem; font-size: .78rem; font-weight: 700; color: var(--accent3);
+    min-height: 20px;
+  }
+  .sm-timeline { margin-top: 1rem; }
+  .sm-tl-label { font-size: .68rem; color: var(--text-dim); margin-bottom: .3rem; }
+  .sm-tl-track {
+    display: flex; gap: 2px; flex-wrap: nowrap; overflow: hidden;
+    background: var(--surface); border-radius: 6px; padding: .5rem .6rem;
+  }
+  .sm-tl-seg {
+    flex-shrink: 0; height: 22px; border-radius: 3px; min-width: 6px;
+    font-size: .6rem; color: #fff; display: flex; align-items: center;
+    justify-content: center; overflow: hidden;
+  }
+  .sm-tl-note { font-size: .72rem; color: var(--text-dim); margin-top: .4rem; }
+
+  /* ── KPI SECTION ── */
+  .kpi-heading {
+    font-size: 1rem; font-weight: 700; color: #fff;
+    margin: 2.5rem 0 .6rem; display: flex; align-items: center; gap: .5rem;
+  }
+  .kpi-subtext { font-size: .85rem; color: var(--text-dim); margin-bottom: 1rem; }
+
+  /* Formula box */
+  .formula-box {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem; margin: 1rem 0;
+  }
+  .formula-line {
+    display: flex; align-items: center; gap: .75rem;
+    font-size: 1.05rem; font-weight: 700; flex-wrap: wrap;
+  }
+  .formula-term {
+    padding: .35rem .9rem; border-radius: 6px; border: 1px solid;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+  }
+  .formula-term.gpu { background: rgba(0,212,255,.08); border-color: var(--accent); color: var(--accent); }
+  .formula-term.xfer { background: rgba(245,158,11,.08); border-color: var(--accent4); color: var(--accent4); }
+  .formula-term.launch { background: rgba(124,58,237,.08); border-color: var(--accent2); color: var(--accent2); }
+  .formula-term.kernel { background: rgba(16,185,129,.08); border-color: var(--accent3); color: var(--accent3); }
+  .formula-op { color: var(--text-dim); font-size: 1.2rem; }
+  .formula-condition {
+    margin-top: .9rem; font-size: .82rem; color: var(--text-dim);
+    padding-top: .9rem; border-top: 1px solid var(--border);
+  }
+  .formula-legend {
+    display: flex; gap: 1.5rem; margin-top: .6rem; flex-wrap: wrap;
+  }
+  .legend-item { font-size: .75rem; color: var(--text-dim); }
+  .xfer-leg { color: var(--accent4); }
+  .launch-leg { color: var(--accent2); }
+  .kernel-leg { color: var(--accent3); }
+
+  /* KPI cards */
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;
+    margin: 1rem 0;
+  }
+  .kpi-card {
+    border-radius: 12px; padding: 1.25rem; border: 1px solid;
+  }
+  .kpi-card-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; margin-bottom: .35rem; }
+  .kpi-card-num { font-size: 1.6rem; font-weight: 900; line-height: 1.1; margin-bottom: .35rem; }
+  .kpi-card-desc { font-size: .75rem; color: var(--text-dim); }
+  .kpi-red { background: rgba(239,68,68,.06); border-color: var(--cpu-color); }
+  .kpi-red .kpi-card-label, .kpi-red .kpi-card-num { color: var(--cpu-color); }
+  .kpi-yellow { background: rgba(245,158,11,.06); border-color: var(--accent4); }
+  .kpi-yellow .kpi-card-label, .kpi-yellow .kpi-card-num { color: var(--accent4); }
+  .kpi-green { background: rgba(16,185,129,.06); border-color: var(--accent3); }
+  .kpi-green .kpi-card-label, .kpi-green .kpi-card-num { color: var(--accent3); }
+  .kpi-blue { background: rgba(0,212,255,.06); border-color: var(--accent); }
+  .kpi-blue .kpi-card-label, .kpi-blue .kpi-card-num { color: var(--accent); }
+
+  /* Transfer table */
+  .transfer-table {
+    border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; margin: 1rem 0; font-size: .8rem;
+  }
+  .ttable-header {
+    display: grid; grid-template-columns: 2fr 1fr 1.2fr 1fr 1fr;
+    background: var(--surface); padding: .6rem 1rem;
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--text-dim); gap: .5rem;
+  }
+  .ttable-header:has(span:nth-child(4)) { grid-template-columns: 2fr 1fr 1.2fr 1fr 1fr; }
+  .ttable-row {
+    display: grid; grid-template-columns: 2fr 1fr 1.2fr 1fr;
+    padding: .65rem 1rem; border-top: 1px solid var(--border);
+    gap: .5rem; align-items: center; color: var(--text-dim);
+    transition: background .2s;
+  }
+  .ttable-row:hover { background: var(--surface2); }
+  .ttable-row:has(span:nth-child(5)) { grid-template-columns: 2fr 1fr 1fr 1fr 1fr; }
+  .highlight-green { color: var(--accent3); font-weight: 700; }
+  .highlight-yellow { color: var(--accent4); font-weight: 700; }
+  .highlight-red { color: var(--cpu-color); font-weight: 700; }
+
+  /* Transfer viz bars */
+  .transfer-viz {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.25rem; margin: 1rem 0;
+  }
+  .tviz-title { font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--text-dim); margin-bottom: 1rem; }
+  .tviz-row { display: flex; align-items: center; gap: .75rem; }
+  .tviz-label { font-size: .72rem; color: var(--text-dim); min-width: 220px; flex-shrink: 0; }
+  .tviz-bar-bg { flex: 1; height: 26px; background: var(--surface2); border-radius: 5px; overflow: hidden; }
+  .tviz-fill {
+    height: 100%; border-radius: 5px;
+    background: linear-gradient(90deg, var(--accent4), #f97316);
+    display: flex; align-items: center; padding-left: 8px;
+    font-size: .68rem; font-weight: 700; color: #fff;
+    min-width: 60px;
+    transition: width 1.6s cubic-bezier(.16,1,.3,1);
+  }
+
+  /* Roofline */
+  .roofline-wrap {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem; margin: 1rem 0;
+    display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: flex-start;
+  }
+  #rooflineCanvas { border-radius: 8px; max-width: 100%; }
+  .roofline-legend { display: flex; flex-direction: column; gap: .6rem; padding-top: .5rem; }
+  .rl-item { display: flex; align-items: center; gap: .5rem; font-size: .78rem; color: var(--text-dim); }
+  .rl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Shape cards */
+  .shape-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;
+    margin: 1rem 0;
+  }
+  .shape-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.25rem;
+    transition: border-color .3s;
+  }
+  .shape-card:hover { border-color: var(--accent); }
+  .shape-icon { font-size: 1.5rem; margin-bottom: .5rem; }
+  .shape-card h4 { font-size: .88rem; font-weight: 700; color: #fff; margin-bottom: .6rem; }
+  .shape-thresh { font-size: .78rem; padding: .25rem 0; color: var(--text-dim); }
+  .thresh-good { color: var(--accent3); font-weight: 700; }
+  .thresh-warn { color: var(--accent4); font-weight: 700; }
+  .thresh-bad { color: var(--cpu-color); font-weight: 700; }
+  .shape-why { font-size: .72rem; color: var(--text-dim); margin-top: .6rem; padding-top: .6rem; border-top: 1px solid var(--border); }
+
+  /* 5-col table variant */
+  .ttable-5 .ttable-header,
+  .ttable-5 .ttable-row {
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr !important;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 3rem 1rem; color: var(--text-dim);
+    font-size: .78rem; border-top: 1px solid var(--border);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* ── TABS ── */
+  .tabs { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .tab-btn {
+    padding: .4rem 1rem; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-dim); font-size: .8rem;
+    cursor: pointer; transition: all .2s;
+  }
+  .tab-btn.active, .tab-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,.06); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── MEMORY DIAGRAM ── */
+  .mem-diagram {
+    display: flex; align-items: center; gap: 1.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+  .mem-box {
+    min-width: 120px; border-radius: 8px; padding: 1rem; text-align: center;
+    border: 1px solid;
+  }
+  .mem-host { border-color: var(--accent4); background: rgba(245,158,11,.06); }
+  .mem-device { border-color: var(--accent); background: rgba(0,212,255,.06); }
+  .mem-box-title { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; margin-bottom: .5rem; }
+  .mem-host .mem-box-title { color: var(--accent4); }
+  .mem-device .mem-box-title { color: var(--accent); }
+  .mem-item { font-size: .72rem; color: var(--text-dim); padding: .2rem 0; }
+  .mem-arrow { font-size: 1.5rem; color: var(--accent2); flex-shrink: 0; text-align: center; }
+  .mem-arrow .dir { font-size: .65rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">⚡ GPU ACCEL</span>
+  <a href="#mindset">Mindset</a>
+  <a href="#profiling">Profile</a>
+  <a href="#planning">Plan</a>
+  <a href="#batch">Batch</a>
+  <a href="#kernels">Kernels</a>
+  <a href="#kpi">GPU KPIs</a>
+  <a href="#benchmark">Benchmark</a>
+</nav>
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<div class="hero page">
+  <div class="hero-badge">Engineering Guide · GPU Acceleration</div>
+  <h1>From CPU Bottleneck<br>to GPU Superpower</h1>
+  <p>A step-by-step guide to thinking, profiling, planning, and implementing GPU acceleration — using real examples from the AI-RSG 5G simulator.</p>
+
+  <div class="gpu-wave">
+    <canvas id="waveCanvas"></canvas>
+  </div>
+
+  <!-- Live speedup counter -->
+  <div class="speedup-grid" style="max-width:700px; margin:0 auto;">
+    <div class="speedup-card">
+      <div class="speedup-num" id="cnt1">0×</div>
+      <div class="speedup-label">RF Phase Speedup</div>
+      <div class="speedup-phase">phase:rf</div>
+    </div>
+    <div class="speedup-card">
+      <div class="speedup-num" id="cnt2">0×</div>
+      <div class="speedup-label">KPI Phase Speedup</div>
+      <div class="speedup-phase">phase:kpi</div>
+    </div>
+    <div class="speedup-card">
+      <div class="speedup-num" id="cnt3">0×</div>
+      <div class="speedup-label">Datagen Speedup</div>
+      <div class="speedup-phase">batch cycles</div>
+    </div>
+    <div class="speedup-card">
+      <div class="speedup-num" id="cnt4">0×</div>
+      <div class="speedup-label">Overall Simulation</div>
+      <div class="speedup-phase">end-to-end</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SECTION 1: MINDSET ═══════════════════ -->
+<div class="page" id="mindset">
+<div class="section animate-in">
+  <div class="section-num">Section 01</div>
+  <h2>The Engineering Mindset</h2>
+  <p class="lead">GPU acceleration isn't just about writing CUDA. It's a way of <em>thinking</em>. Before touching any code, every GPU engineer asks the same questions.</p>
+
+  <div class="mindset-grid">
+    <div class="mindset-card">
+      <div class="icon">🔍</div>
+      <h3>Find the Real Hotspot</h3>
+      <p>Don't guess. 90% of your wall-time lives in 10% of the code. Use a profiler to find it before writing a single kernel.</p>
+    </div>
+    <div class="mindset-card">
+      <div class="icon">📦</div>
+      <h3>Think in Batches</h3>
+      <p>GPUs hate one-by-one work. Convert sequential per-item loops into operations over entire arrays at once.</p>
+    </div>
+    <div class="mindset-card">
+      <div class="icon">🧵</div>
+      <h3>Expose Parallelism</h3>
+      <p>Ask: "Are these computations independent?" If UE-1's RSRP doesn't affect UE-2's, you can compute them simultaneously.</p>
+    </div>
+    <div class="mindset-card">
+      <div class="icon">🚌</div>
+      <h3>Minimize Data Movement</h3>
+      <p>PCIe transfers are expensive. The ideal pattern is: upload once → run many kernels → download once.</p>
+    </div>
+    <div class="mindset-card">
+      <div class="icon">📐</div>
+      <h3>Measure, Not Assume</h3>
+      <p>After every change, profile again. GPU wins aren't always where you expect. Let numbers guide decisions.</p>
+    </div>
+    <div class="mindset-card">
+      <div class="icon">🔢</div>
+      <h3>Match Precision to Need</h3>
+      <p>Float32 is 2× faster than float64 on most GPU cores. Only use float64 where physics demands it.</p>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:2rem;">
+    <strong>The Golden Rule:</strong> The best GPU kernel is the one that never runs — because you designed your algorithm to need fewer total operations. Algorithmic complexity beats hardware every time.
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════ SECTION 2: PROFILING ═══════════════════ -->
+<div class="page" id="profiling">
+<div class="section animate-in">
+  <div class="section-num">Section 02</div>
+  <h2>Finding the Hotspot — Profiling</h2>
+  <p class="lead">The AI-RSG simulator ran at ~1,400 cycles total before hitting wall-time limits. Profiling revealed 99% of time lived in a single function.</p>
+
+  <!-- NSYS trace visualization -->
+  <div class="nsys-trace">
+    <div class="nsys-title">⏱ Nsight Systems — Phase Timeline (CPU baseline, 1,415 cycles)</div>
+
+    <div class="nsys-row">
+      <div class="nsys-row-label">
+        <span>phase:rf (RF datagen)</span>
+        <span style="color:var(--cpu-color)">1026.6 s — <strong>99.2%</strong></span>
+      </div>
+      <div class="nsys-row-bar">
+        <div class="nsys-fill nsys-rf-cpu" style="width:99.2%" id="bar-rf-cpu">RF 1,026s</div>
+      </div>
+    </div>
+
+    <div class="nsys-row">
+      <div class="nsys-row-label">
+        <span>phase:kpi</span>
+        <span style="color:#f97316">5.5 s — 0.5%</span>
+      </div>
+      <div class="nsys-row-bar">
+        <div class="nsys-fill nsys-kpi-cpu" style="width:0.53%">KPI</div>
+      </div>
+    </div>
+
+    <div class="nsys-row">
+      <div class="nsys-row-label">
+        <span>phase:output</span>
+        <span style="color:#a78bfa">3.4 s — 0.3%</span>
+      </div>
+      <div class="nsys-row-bar">
+        <div class="nsys-fill nsys-out-cpu" style="width:0.33%">Out</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <strong>Key Insight:</strong> phase:rf consumed 99.2% of CPU time. This is your target. Everything else is noise.
+  </div>
+
+  <div class="steps">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Add NVTX Phase Annotations</h3>
+        <p>Instrument your code with named ranges so the profiler can distinguish phases. Use consistent names so CPU and GPU profiles align.</p>
+        <code>NSYS_PROFILE_SIM=1 nsys profile --trace=cuda,nvtx,osrt python sim.py</code>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Capture with Nsight Systems</h3>
+        <p>Enable <code>--trace-fork-before-exec=true</code> to capture NVTX from forked worker processes. Output lands in <code>/tmp/sim-nsys-{pid}.nsys-rep</code>.</p>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Identify the Dominant Phase</h3>
+        <p>Sort phases by wall time. The top entry is your GPU target. In RSG, <code>phase:rf</code> was 726 ms/cycle × 1,415 cycles = 1,026 seconds.</p>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Quantify the Inner Loop</h3>
+        <p>Understand <em>why</em> it's slow. RSG's RF phase called <code>_compute_rsrp_batch()</code> once per (cycle × UE × cell) = ~36,000 scalar calls per datagen batch.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Before/After NVTX annotation code -->
+  <div class="code-diff">
+    <div class="code-pane">
+      <div class="code-pane-header before">⚠ Before — No Visibility</div>
+      <pre><span class="cmt"># simulation.py — no annotations
+# Profiler sees one opaque block</span>
+<span class="kw">def</span> <span class="fn">run_cycle</span>(self, cycle):
+    <span class="cmt"># RF: black box</span>
+    self.radio_model.update()
+
+    <span class="cmt"># KPI: also black box</span>
+    self.kpi_engine.compute()
+
+    <span class="cmt"># Output: invisible</span>
+    self.write_influx()</pre>
+    </div>
+    <div class="code-pane">
+      <div class="code-pane-header after">✓ After — NVTX Annotated</div>
+      <pre><span class="cmt"># simulation.py — phases visible in Nsight</span>
+<span class="kw">from</span> Tera5G.util <span class="kw">import</span> nvtx_range <span class="kw">as</span> _phase
+
+<span class="kw">def</span> <span class="fn">run_cycle</span>(self, cycle):
+    <span class="kw">with</span> <span class="fn">_phase</span>(<span class="str">"phase:rf"</span>, <span class="str">"red"</span>):
+        <span class="hi">self.radio_model.update()</span>
+
+    <span class="kw">with</span> <span class="fn">_phase</span>(<span class="str">"phase:kpi"</span>, <span class="str">"green"</span>):
+        <span class="hi">self.kpi_engine.compute()</span>
+
+    <span class="kw">with</span> <span class="fn">_phase</span>(<span class="str">"phase:output"</span>, <span class="str">"blue"</span>):
+        <span class="hi">self.write_influx()</span></pre>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════ SECTION 3: PLANNING ═══════════════════ -->
+<div class="page" id="planning">
+<div class="section animate-in">
+  <div class="section-num">Section 03</div>
+  <h2>Planning — What to Offload and How</h2>
+  <p class="lead">Not everything benefits from GPU. The decision tree below mirrors how AI-RSG chose what to offload.</p>
+
+  <div class="decision-tree">
+    <div class="decision-node root">
+      <div class="q">Is this computation <strong>data-parallel</strong>? (independent per item)</div>
+      <div class="ans">Can UE-1's RSRP be computed independently of UE-2's?</div>
+    </div>
+    <div style="margin-left:1.25rem; border-left:2px dashed var(--border); padding-left:1.25rem; margin-top:.5rem;">
+      <div class="decision-node yes">
+        <span class="badge badge-yes">YES</span>
+        <span class="q">Is the working set large enough? (&gt;1k elements)</span>
+        <div class="ans">Fewer than ~1k elements → GPU launch overhead dominates. RSRP for 600 UEs × 90 cells = 54,000 pairs → <strong>yes, offload</strong></div>
+      </div>
+      <div style="margin-left:1.25rem; border-left:2px dashed var(--border); padding-left:1.25rem; margin-top:.5rem;">
+        <div class="decision-node yes">
+          <span class="badge badge-yes">YES</span>
+          <span class="q">Can you batch <em>across time</em>? (multiple cycles at once)</span>
+          <div class="ans">Instead of 1 cycle/call, process 512 cycles per kernel → amortize launch cost → <strong>tile by 512 cycles</strong></div>
+        </div>
+        <div style="margin-left:1.25rem; border-left:2px dashed var(--border); padding-left:1.25rem; margin-top:.5rem;">
+          <div class="decision-node yes" style="border-color:var(--accent3)">
+            <span class="badge badge-yes">✓ GPU</span>
+            <span class="q">Use a Numba CUDA kernel (or CuPy for reductions)</span>
+            <div class="ans">rsrp_3gpp_kernel, handover_kernel, kpi_and_link_kernel</div>
+          </div>
+        </div>
+      </div>
+      <div class="decision-node no" style="margin-top:1rem;">
+        <span class="badge badge-no">NO (too small)</span>
+        <span class="q">Keep on CPU with NumPy — launch overhead not worth it</span>
+      </div>
+    </div>
+    <div class="decision-node no" style="margin-top:1rem;">
+      <span class="badge badge-no">NO (sequential dependency)</span>
+      <span class="q">Each step depends on the previous (e.g. state machine)</span>
+      <div class="ans">Example: handover carries state cycle-to-cycle. Solution: parallelize <em>across UEs</em> (each thread owns one UE's entire timeline)</div>
+    </div>
+  </div>
+
+  <!-- Memory strategy diagram -->
+  <h3 style="font-size:1rem; font-weight:700; margin:2rem 0 .75rem; color:#fff;">Memory Transfer Strategy</h3>
+  <p style="font-size:.85rem; color:var(--text-dim); margin-bottom:1rem;">The #1 mistake beginners make: transferring data every cycle. Upload once, download once per <em>batch</em>.</p>
+
+  <div class="mem-diagram">
+    <div class="mem-box mem-host">
+      <div class="mem-box-title">🖥 Host (CPU RAM)</div>
+      <div class="mem-item">UE positions (512 cycles)</div>
+      <div class="mem-item">Cell config</div>
+      <div class="mem-item">Beam patterns</div>
+      <div class="mem-item">LOS grid</div>
+    </div>
+    <div class="mem-arrow">
+      <div>→→→</div>
+      <div class="dir">H2D Upload<br>once per batch</div>
+    </div>
+    <div class="mem-box mem-device">
+      <div class="mem-box-title">🎮 Device (GPU VRAM)</div>
+      <div class="mem-item">rsrp_3gpp_kernel</div>
+      <div class="mem-item">handover_kernel</div>
+      <div class="mem-item">kpi_and_link_kernel</div>
+      <div class="mem-item">cell_aggregate_kernel</div>
+    </div>
+    <div class="mem-arrow">
+      <div>→→→</div>
+      <div class="dir">D2H Download<br>once per batch</div>
+    </div>
+    <div class="mem-box mem-host">
+      <div class="mem-box-title">🖥 Host (CPU RAM)</div>
+      <div class="mem-item">RSRP table</div>
+      <div class="mem-item">Serving cells</div>
+      <div class="mem-item">KPI arrays</div>
+      <div class="mem-item">Cell aggregates</div>
+    </div>
+  </div>
+
+  <!-- CYCLE TILING EXPLAINER -->
+  <div class="explainer-box" id="cycleTilingBox">
+    <div class="explainer-header">
+      <span class="explainer-icon">🔍</span>
+      <div>
+        <div class="explainer-title">What is a "cycle" and what is a "batch"?</div>
+        <div class="explainer-sub">Plain-English breakdown of cycle tiling in RSG</div>
+      </div>
+    </div>
+
+    <div class="explainer-body">
+      <div class="explainer-concept">
+        <div class="ec-label">A simulation cycle</div>
+        <div class="ec-text">One tick of simulated time — roughly 100 ms of virtual 5G network life. Each cycle, every UE has moved to a new position, and the network needs fresh RSRP, SINR, and handover decisions for every UE–cell pair. In CPU code this is literally a Python <code>for cycle in range(n_cycles):</code> loop body.</div>
+      </div>
+      <div class="explainer-concept">
+        <div class="ec-label">A batch</div>
+        <div class="ec-text">A chunk of 512 consecutive cycles collected together and sent to the GPU in one go. Instead of calling the GPU 512 separate times (once per cycle), we call it once with all 512 cycles' worth of data. The GPU processes all of them simultaneously — one thread per (UE, cell) pair, looping over the 512 cycles internally.</div>
+      </div>
+    </div>
+
+    <!-- CPU vs GPU cycle processing animation -->
+    <div class="tiling-compare">
+      <div class="tiling-side">
+        <div class="tiling-side-label cpu-label">🐌 CPU — one cycle at a time</div>
+        <div class="tiling-cpu-track" id="cpuTrack">
+          <!-- filled by JS -->
+        </div>
+        <div class="tiling-cpu-pointer" id="cpuPointer">▼ processing</div>
+        <div class="tiling-stat" style="color:var(--cpu-color)">726 ms × 512 cycles = <strong>~6 minutes</strong></div>
+      </div>
+      <div class="tiling-side">
+        <div class="tiling-side-label gpu-label">⚡ GPU — all 512 cycles at once (one batch)</div>
+        <div class="tiling-gpu-grid" id="gpuBatchGrid">
+          <!-- filled by JS -->
+        </div>
+        <div class="tiling-stat" style="color:var(--gpu-color)">Upload 110 MB + kernel = <strong>~12 ms total</strong></div>
+      </div>
+    </div>
+
+    <div class="explainer-body" style="margin-top:0; margin-bottom:1rem;">
+      <div class="explainer-concept">
+        <div class="ec-label">A tile</div>
+        <div class="ec-text">A tile is one fixed-size chunk that you process at a time. You have 36,000 total cycles but can't fit them all in GPU memory at once — so you cut the work into tiles of 512 cycles each, process one tile, download the results, then move to the next tile. Think of it like reading a book 20 pages at a time because your desk only fits 20 pages open.</div>
+      </div>
+    </div>
+
+    <div class="tiling-math">
+      <div class="tiling-math-title">Why exactly 512 cycles? — VRAM budget math</div>
+      <div class="tiling-math-row">
+        <span class="tm-label">RSRP tensor size</span>
+        <span class="tm-calc">512 cycles × 600 UEs × 90 cells × 4 bytes (float32)</span>
+        <span class="tm-result" style="color:var(--accent3)">=  110 MB</span>
+      </div>
+      <div class="tiling-math-row">
+        <span class="tm-label">GPU VRAM available</span>
+        <span class="tm-calc">RTX PRO 6000 Blackwell</span>
+        <span class="tm-result" style="color:var(--accent)">96,000 MB</span>
+      </div>
+      <div class="tiling-math-row">
+        <span class="tm-label">VRAM used by tile</span>
+        <span class="tm-calc">110 MB / 96,000 MB</span>
+        <span class="tm-result" style="color:var(--accent3)">0.11% ✓</span>
+      </div>
+      <div class="tiling-math-note">If you tried to do 36,000 cycles at once: 36,000 × 600 × 90 × 4 B = <strong>7.8 GB</strong> — still fits here, but on a 8 GB GPU it would overflow. Tiling keeps the code portable and leaves room for intermediate buffers.</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════ SECTION 4: GPU KPIs ═══════════════════ -->
+<div class="page" id="kpi">
+<div class="section animate-in">
+  <div class="section-num">Section 04</div>
+  <h2>GPU Acceleration KPIs — When Does It Actually Win?</h2>
+  <p class="lead">These are the quantitative thresholds you need to cross before GPU acceleration pays off. Each one is a hard engineering constraint, not a preference.</p>
+
+  <!-- ── 1. BREAK-EVEN EQUATION ── -->
+  <h3 class="kpi-heading">① The Break-Even Equation</h3>
+  <p class="kpi-subtext">GPU wins only when total GPU time beats CPU time. Total GPU time has three unavoidable terms:</p>
+
+  <div class="formula-box">
+    <div class="formula-line">
+      <span class="formula-term gpu">T<sub>gpu</sub></span>
+      <span class="formula-op">=</span>
+      <span class="formula-term xfer">T<sub>transfer</sub></span>
+      <span class="formula-op">+</span>
+      <span class="formula-term launch">T<sub>launch</sub></span>
+      <span class="formula-op">+</span>
+      <span class="formula-term kernel">T<sub>kernel</sub></span>
+    </div>
+    <div class="formula-condition">GPU is worth it only when <strong>T<sub>gpu</sub> &lt; T<sub>cpu</sub></strong></div>
+    <div class="formula-legend">
+      <span class="legend-item xfer-leg">T<sub>transfer</sub> = bytes / PCIe bandwidth</span>
+      <span class="legend-item launch-leg">T<sub>launch</sub> = ~5–20 µs per kernel (fixed overhead)</span>
+      <span class="legend-item kernel-leg">T<sub>kernel</sub> = flops / (SMs × FLOPS/SM × occupancy)</span>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>RSG example:</strong> phase:rf CPU time = 726 ms/cycle. GPU transfer = ~2 ms, launch = ~0.05 ms, kernel = ~0.6 ms → T<sub>gpu</sub> ≈ 2.65 ms. Break-even was at ~4 ms of CPU work — well exceeded.
+  </div>
+
+  <!-- ── 2. PARALLELISM DEGREE ── -->
+  <h3 class="kpi-heading">② Required Degree of Parallelism</h3>
+  <p class="kpi-subtext">You need enough independent work items to keep the GPU busy. An underoccupied GPU is slower than CPU.</p>
+
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-red">
+      <div class="kpi-card-label">Too few — GPU loses</div>
+      <div class="kpi-card-num">&lt; 1 k</div>
+      <div class="kpi-card-desc">Independent work items. Launch overhead (~10 µs) dominates. CPU wins on a single function call in &lt;1 µs.</div>
+    </div>
+    <div class="kpi-card kpi-yellow">
+      <div class="kpi-card-label">Marginal — profile carefully</div>
+      <div class="kpi-card-num">1 k – 10 k</div>
+      <div class="kpi-card-desc">GPU can win if arithmetic intensity is high. Measure; don't assume. Many warps will be idle.</div>
+    </div>
+    <div class="kpi-card kpi-green">
+      <div class="kpi-card-label">Solid — GPU wins</div>
+      <div class="kpi-card-num">10 k – 1 M</div>
+      <div class="kpi-card-desc">Enough to saturate most SMs. RSG: 600 UE × 90 cells × 512 cycles = <strong>27.6 M</strong> independent RSRP values per batch.</div>
+    </div>
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-card-label">Ideal — full utilization</div>
+      <div class="kpi-card-num">&gt; 1 M</div>
+      <div class="kpi-card-desc">All SMs saturated. Memory bandwidth becomes the bottleneck, not compute. Use tiling and shared memory to reduce traffic.</div>
+    </div>
+  </div>
+
+  <!-- OCCUPANCY EXPLAINER -->
+  <div class="explainer-box" id="occupancyBox">
+    <div class="explainer-header">
+      <span class="explainer-icon">🔍</span>
+      <div>
+        <div class="explainer-title">What is an SM? What is a warp? What does "resident" mean?</div>
+        <div class="explainer-sub">Plain-English breakdown of GPU occupancy</div>
+      </div>
+    </div>
+
+    <div class="explainer-body">
+      <div class="explainer-concept">
+        <div class="ec-label">SM — Streaming Multiprocessor</div>
+        <div class="ec-text">Think of an SM as one independent mini-processor on the GPU chip. The RTX 6000 Blackwell has <strong>188 SMs</strong>. Each SM can run work completely in parallel with all the others — like having 188 separate CPUs on one chip, except each SM is optimised for running many threads at once rather than one thread very fast.</div>
+      </div>
+      <div class="explainer-concept">
+        <div class="ec-label">Warp — a group of 32 threads</div>
+        <div class="ec-text">A warp is <strong>32 threads that always execute the same instruction at the same time</strong> (lockstep SIMD). You write code as if each thread is independent, but the hardware secretly runs them 32 at a time. Your thread block of 256 threads = 8 warps. The SM schedules warps, not individual threads.</div>
+      </div>
+      <div class="explainer-concept">
+        <div class="ec-label">Resident warps — warps loaded on an SM right now</div>
+        <div class="ec-text">When a kernel launches, the GPU assigns some warps to each SM. Those warps are <strong>resident</strong> — their register state lives on the SM. At any moment, some warps are actively computing; others are <em>stalled</em> waiting for memory. The SM switches between them instantly (zero-cost context switch). This is how the GPU hides memory latency.</div>
+      </div>
+    </div>
+
+    <!-- SM latency hiding animation -->
+    <div class="sm-anim-wrap">
+      <div class="sm-anim-title">Why you need multiple resident warps per SM — latency hiding animation</div>
+      <div class="sm-anim-body">
+        <div class="sm-box">
+          <div class="sm-box-label">SM #0</div>
+          <div class="warp-rows" id="warpRows">
+            <!-- filled by JS: 4 warp rows -->
+          </div>
+        </div>
+        <div class="sm-anim-legend">
+          <div class="sm-legend-row"><span class="warp-dot warp-running"></span> Running (computing)</div>
+          <div class="sm-legend-row"><span class="warp-dot warp-waiting"></span> Waiting for memory (~200 cycles latency)</div>
+          <div class="sm-legend-row"><span class="warp-dot warp-ready"></span> Ready (next in queue)</div>
+          <div class="sm-status" id="smStatus">⚡ SM is busy — switches instantly when a warp stalls</div>
+        </div>
+      </div>
+      <div class="sm-timeline">
+        <div class="sm-tl-label">Time →</div>
+        <div class="sm-tl-track" id="smTimeline">
+          <!-- filled by JS -->
+        </div>
+        <div class="sm-tl-note" id="smTlNote">With only 1 warp: SM stalls and sits idle while waiting for memory</div>
+      </div>
+    </div>
+
+    <!-- How to ensure good occupancy -->
+    <div class="tiling-math" style="margin-top:1.25rem;">
+      <div class="tiling-math-title">How to check and ensure good occupancy</div>
+      <div class="tiling-math-row">
+        <span class="tm-label">Thread block size</span>
+        <span class="tm-calc">Use 128 or 256 threads (4–8 warps per block). Too small = underutilised SM.</span>
+        <span class="tm-result" style="color:var(--accent3)">RSG: 256 ✓</span>
+      </div>
+      <div class="tiling-math-row">
+        <span class="tm-label">Registers per thread</span>
+        <span class="tm-calc">Each SM has 65,536 registers. If your kernel uses 64 regs/thread: 65536/64 = 1024 threads max → 4 warps. Keep registers low.</span>
+        <span class="tm-result" style="color:var(--accent4)">nsys shows this</span>
+      </div>
+      <div class="tiling-math-row">
+        <span class="tm-label">Shared memory per block</span>
+        <span class="tm-calc">Each SM has 228 KB shared mem. If a block uses 100 KB, only 2 blocks fit → 2 × 8 warps = 16 resident warps. Fewer is fine if compute-bound.</span>
+        <span class="tm-result" style="color:var(--accent3)">RSG: minimal ✓</span>
+      </div>
+      <div class="tiling-math-row">
+        <span class="tm-label">Minimum warps to hide latency</span>
+        <span class="tm-calc">GPU memory latency ≈ 200–800 cycles. Each warp takes ~4 cycles to issue. Need 200/4 = ~50 warps in flight to fully hide latency (theoretical).</span>
+        <span class="tm-result" style="color:var(--accent)">Rule: ≥ 4</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. TRANSFER BUDGET ── -->
+  <h3 class="kpi-heading">③ Transfer Budget — The PCIe Tax</h3>
+  <p class="kpi-subtext">Every byte you move between CPU and GPU costs time. This is your most important constraint to calculate upfront.</p>
+
+  <div class="transfer-table">
+    <div class="ttable-header">
+      <span>Link</span><span>Peak BW</span><span>Real-world BW</span><span>1 GB costs</span>
+    </div>
+    <div class="ttable-row">
+      <span>PCIe Gen 4 x16 (H2D)</span>
+      <span>32 GB/s</span>
+      <span class="highlight-yellow">~20 GB/s</span>
+      <span>~50 ms</span>
+    </div>
+    <div class="ttable-row">
+      <span>PCIe Gen 4 x16 (D2H)</span>
+      <span>32 GB/s</span>
+      <span class="highlight-yellow">~18 GB/s</span>
+      <span>~55 ms</span>
+    </div>
+    <div class="ttable-row">
+      <span>GPU GDDR7 VRAM (RTX 6000)</span>
+      <span>960 GB/s</span>
+      <span class="highlight-green">~900 GB/s</span>
+      <span>~1.1 ms</span>
+    </div>
+    <div class="ttable-row">
+      <span>CPU L3 cache bandwidth</span>
+      <span>~300 GB/s</span>
+      <span class="highlight-green">~250 GB/s</span>
+      <span>~4 ms</span>
+    </div>
+  </div>
+
+  <p class="kpi-subtext" style="margin-top:1rem;">Use this formula to decide if transfer is affordable:</p>
+
+  <div class="formula-box" style="margin-top:.75rem;">
+    <div class="formula-line" style="font-size:.9rem; flex-wrap:wrap; gap:.5rem;">
+      <span class="formula-term xfer">Transfer time</span>
+      <span class="formula-op">=</span>
+      <span class="formula-term" style="background:rgba(245,158,11,.1); border-color:var(--accent4); color:var(--accent4);">
+        (n_cycles × n_ue × n_cells × 4 bytes) / PCIe_BW
+      </span>
+    </div>
+    <div class="formula-condition" style="margin-top:.75rem;">
+      RSG: 512 × 600 × 90 × 4 B = <strong>110 MB</strong> → 110 / 20,000 = <strong>5.5 ms</strong> H2D + ~4 ms D2H = ~10 ms transfer per batch
+    </div>
+    <div class="formula-condition" style="color:var(--accent3); margin-top:.25rem;">
+      vs CPU cost for same batch: 512 cycles × 726 ms = <strong>372 s</strong> → Transfer is &lt;0.003% of what we're saving ✓
+    </div>
+  </div>
+
+  <!-- Transfer budget animated bar -->
+  <div class="transfer-viz">
+    <div class="tviz-title">Transfer budget as % of saved CPU time — lower = more headroom</div>
+    <div class="tviz-row">
+      <span class="tviz-label">H2D + D2H (~14 ms/batch)</span>
+      <div class="tviz-bar-bg">
+        <div class="tviz-fill" style="width:0%" id="tviz1" data-target="0.004">0.004%</div>
+      </div>
+    </div>
+    <div class="tviz-row" style="margin-top:.5rem;">
+      <span class="tviz-label">GPU kernel time (~0.65 ms/cycle)</span>
+      <div class="tviz-bar-bg">
+        <div class="tviz-fill" style="width:0%; background:linear-gradient(90deg,var(--accent2),var(--accent))" id="tviz2" data-target="0.09">0.09%</div>
+      </div>
+    </div>
+    <div class="tviz-row" style="margin-top:.5rem;">
+      <span class="tviz-label">CPU cost avoided (726 ms/cycle × 512)</span>
+      <div class="tviz-bar-bg">
+        <div class="tviz-fill" style="width:0%; background:linear-gradient(90deg,var(--cpu-color),#f97316)" id="tviz3" data-target="100">372 s baseline</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4. ARITHMETIC INTENSITY ── -->
+  <h3 class="kpi-heading">④ Arithmetic Intensity — Compute vs Memory Bound</h3>
+  <p class="kpi-subtext">The roofline model tells you whether your kernel is limited by compute throughput or memory bandwidth. This determines which axis to optimize.</p>
+
+  <div class="roofline-wrap">
+    <canvas id="rooflineCanvas" width="600" height="260"></canvas>
+    <div class="roofline-legend">
+      <div class="rl-item"><span class="rl-dot" style="background:var(--cpu-color)"></span> Memory-bound (low AI) — go faster by reducing loads</div>
+      <div class="rl-item"><span class="rl-dot" style="background:var(--accent4)"></span> Compute-bound (high AI) — go faster by more parallelism or tensor cores</div>
+      <div class="rl-item"><span class="rl-dot" style="background:var(--accent3)"></span> RSG RSRP kernel (~8 FLOP/byte)</div>
+      <div class="rl-item"><span class="rl-dot" style="background:var(--accent)"></span> RSG handover kernel (~2 FLOP/byte)</div>
+    </div>
+  </div>
+
+  <div class="transfer-table" style="margin-top:1rem;">
+    <div class="ttable-header">
+      <span>Kernel</span><span>Flops / element</span><span>Bytes read</span><span>AI (FLOP/B)</span><span>Bound by</span>
+    </div>
+    <div class="ttable-row">
+      <span>rsrp_3gpp_kernel</span><span>~40</span><span>~5 B</span>
+      <span class="highlight-green">~8</span>
+      <span style="color:var(--accent4)">Compute</span>
+    </div>
+    <div class="ttable-row">
+      <span>handover_kernel</span><span>~6</span><span>~3 B</span>
+      <span class="highlight-yellow">~2</span>
+      <span style="color:var(--cpu-color)">Memory</span>
+    </div>
+    <div class="ttable-row">
+      <span>kpi_and_link_kernel</span><span>~25</span><span>~4 B</span>
+      <span class="highlight-green">~6</span>
+      <span style="color:var(--accent4)">Compute</span>
+    </div>
+    <div class="ttable-row">
+      <span>cell_aggregate_kernel</span><span>~3</span><span>~8 B</span>
+      <span class="highlight-red">~0.4</span>
+      <span style="color:var(--cpu-color)">Memory</span>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>Ridge point for RTX 6000 Blackwell:</strong> 82.6 TFLOPS FP32 ÷ 960 GB/s = ~86 FLOP/byte. Any kernel below this line is memory-bound — throwing more SMs at it won't help; you need better memory access patterns (coalescing, tiling, shared memory).
+  </div>
+
+  <!-- ── 5. MINIMUM DATA SIZE ── -->
+  <h3 class="kpi-heading">⑤ Minimum Data Dimensions & Shape</h3>
+  <p class="kpi-subtext">These are practical minimums derived from GPU hardware constraints, not arbitrary rules.</p>
+
+  <div class="shape-grid">
+    <div class="shape-card">
+      <div class="shape-icon">📏</div>
+      <h4>Minimum element count</h4>
+      <div class="shape-thresh"><span class="thresh-bad">❌ &lt; 1,024</span> Launch overhead dominates</div>
+      <div class="shape-thresh"><span class="thresh-warn">⚠ 1 k – 32 k</span> GPU may win if compute-heavy</div>
+      <div class="shape-thresh"><span class="thresh-good">✓ &gt; 32 k</span> Reliable GPU win for most kernels</div>
+      <p class="shape-why">Why: one CUDA warp = 32 threads. One SM = up to 64 warps = 2,048 threads. RTX 6000 has 188 SMs → need ~386 k threads to saturate all SMs at 100% occupancy.</p>
+    </div>
+    <div class="shape-card">
+      <div class="shape-icon">🧱</div>
+      <h4>Memory layout (critical)</h4>
+      <div class="shape-thresh"><span class="thresh-good">✓ Contiguous C-order (row-major)</span></div>
+      <div class="shape-thresh"><span class="thresh-bad">❌ Fortran-order / strided access</span></div>
+      <div class="shape-thresh"><span class="thresh-bad">❌ List of Python objects / dicts</span></div>
+      <p class="shape-why">Why: GPU memory controllers load 128-byte cache lines. 32 adjacent threads reading adjacent floats = 1 transaction (coalesced). Non-contiguous = 32 separate transactions = 32× bandwidth waste.</p>
+    </div>
+    <div class="shape-card">
+      <div class="shape-icon">🔢</div>
+      <h4>Data type</h4>
+      <div class="shape-thresh"><span class="thresh-good">✓ float32 — 2× throughput vs float64</span></div>
+      <div class="shape-thresh"><span class="thresh-warn">⚠ float64 — only for physics requiring it</span></div>
+      <div class="shape-thresh"><span class="thresh-good">✓ int32/uint16 — great for indices/masks</span></div>
+      <p class="shape-why">RTX 6000: 82.6 TFLOPS FP32 vs 41.3 TFLOPS FP64. RSG uses float32 for RSRP (range −157 to −30 dB, 3 decimal places → float32 is sufficient).</p>
+    </div>
+    <div class="shape-card">
+      <div class="shape-icon">📐</div>
+      <h4>Tensor shape for 2D kernels</h4>
+      <div class="shape-thresh"><span class="thresh-good">✓ Both dims ≥ 32 (fills warps)</span></div>
+      <div class="shape-thresh"><span class="thresh-warn">⚠ One dim = 1 (degenerate — use 1D kernel)</span></div>
+      <div class="shape-thresh"><span class="thresh-good">✓ Dims are multiples of 32 (no tail warp waste)</span></div>
+      <p class="shape-why">RSG thread block is 16×16 = 256 threads (8 warps). Grid is ⌈n_cells/16⌉ × ⌈n_UEs/16⌉. With 90 cells and 600 UEs: 6×38 = 228 blocks × 256 threads = 58 k threads → solid.</p>
+    </div>
+  </div>
+
+  <!-- ── 6. QUICK DECISION TABLE ── -->
+  <h3 class="kpi-heading" style="margin-top:2.5rem;">⑥ Quick Go / No-Go Reference</h3>
+
+  <div class="transfer-table">
+    <div class="ttable-header">
+      <span>KPI</span><span>No-Go threshold</span><span>Go threshold</span><span>RSG value</span>
+    </div>
+    <div class="ttable-row">
+      <span>Independent work items</span>
+      <span class="highlight-red">&lt; 1,000</span>
+      <span class="highlight-green">&gt; 32,000</span>
+      <span class="highlight-green">27.6 M ✓</span>
+    </div>
+    <div class="ttable-row">
+      <span>Transfer time / CPU time saved</span>
+      <span class="highlight-red">&gt; 50%</span>
+      <span class="highlight-green">&lt; 10%</span>
+      <span class="highlight-green">0.004% ✓</span>
+    </div>
+    <div class="ttable-row">
+      <span>Arithmetic intensity (FLOP/byte)</span>
+      <span class="highlight-red">&lt; 0.5</span>
+      <span class="highlight-green">&gt; 2.0</span>
+      <span class="highlight-green">2–8 ✓</span>
+    </div>
+    <div class="ttable-row">
+      <span>Data layout</span>
+      <span class="highlight-red">Strided / object list</span>
+      <span class="highlight-green">Contiguous float32 array</span>
+      <span class="highlight-green">NumPy/CuPy arrays ✓</span>
+    </div>
+    <div class="ttable-row">
+      <span>Tensor size in VRAM</span>
+      <span class="highlight-red">&gt; 80% VRAM</span>
+      <span class="highlight-green">&lt; 30% VRAM</span>
+      <span class="highlight-green">110 MB / 96 GB ✓</span>
+    </div>
+    <div class="ttable-row">
+      <span>Parallelism type</span>
+      <span class="highlight-red">Strict serial dependency</span>
+      <span class="highlight-green">Independent or axis-separable</span>
+      <span class="highlight-green">UE-parallel ✓</span>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════ SECTION 5: BATCH PROGRAMMING ═══════════════════ -->
+<div class="page" id="batch">
+<div class="section animate-in">
+  <div class="section-num">Section 05</div>
+  <h2>Batch Programming — Rewriting for Parallelism</h2>
+  <p class="lead">The first step is always: replace per-item scalar loops with operations over entire arrays. This works even before you touch GPU code.</p>
+
+  <!-- CPU vs GPU thread animation -->
+  <div class="thread-demo">
+    <div class="thread-demo-title">🎬 CPU Sequential vs GPU Parallel — computing RSRP for 48 UE-cell pairs</div>
+    <div class="thread-compare">
+      <div class="thread-side">
+        <h4 class="cpu-label">🐌 CPU — one at a time</h4>
+        <div class="cpu-queue">
+          <div class="cpu-task">UE-0 × Cell-0</div>
+          <div class="cpu-task">UE-1 × Cell-0</div>
+          <div class="cpu-task">UE-2 × Cell-0</div>
+          <div class="cpu-task">UE-3 × Cell-0</div>
+          <div class="cpu-task">UE-4 × Cell-0</div>
+          <div class="cpu-task">UE-5 × Cell-0 … ×48</div>
+        </div>
+        <p style="font-size:.72rem; color:var(--text-dim); margin-top:.75rem; text-align:center;">Sequential · ~726 ms/cycle</p>
+      </div>
+      <div class="thread-side">
+        <h4 class="gpu-label">⚡ GPU — all at once (16×16 grid)</h4>
+        <div class="gpu-blocks" id="gpuGrid">
+          <!-- 64 blocks filled by JS -->
+        </div>
+        <p style="font-size:.72rem; color:var(--text-dim); margin-top:.75rem; text-align:center;">Parallel · ~0.65 ms/cycle</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs for 3 transformations -->
+  <div class="tabs" id="batchTabs">
+    <button class="tab-btn active" onclick="showTab('t1', this)">Path Loss</button>
+    <button class="tab-btn" onclick="showTab('t2', this)">RSRP Kernel</button>
+    <button class="tab-btn" onclick="showTab('t3', this)">Cell Aggregation</button>
+  </div>
+
+  <div id="t1" class="tab-panel active">
+    <div class="code-diff">
+      <div class="code-pane">
+        <div class="code-pane-header before">⚠ Before — NumPy vectorized (still CPU)</div>
+        <pre><span class="cmt"># propagation.py — runs on CPU each cycle</span>
+<span class="kw">def</span> <span class="fn">path_loss_uma</span>(d3D, d2D, freq_ghz,
+                   h_bs, h_ut, is_los, xp=np):
+    <span class="hi-bad">d3D  = xp.asarray(d3D, dtype=xp.float64)</span>
+    <span class="hi-bad">d2D  = xp.asarray(d2D, dtype=xp.float64)</span>
+    log_f = xp.log10(freq_ghz)
+
+    d_bp = _breakpoint_uma(h_bs, h_ut, freq_ghz, ...)
+    <span class="hi-bad">near = d3D &lt;= d_bp</span>
+
+    pl_los = xp.where(near,
+        28 + 22 * xp.log10(d3D) + 20 * log_f,
+        28 + 40 * xp.log10(d3D) + 20 * log_f
+        - 9 * xp.log10(d_bp**2 + (h_bs-h_ut)**2))
+
+    pl_nlos = (13.54 + 39.08 * xp.log10(d3D)
+               + 20 * log_f - 0.6 * (h_ut - 1.5))
+
+    <span class="cmt"># Called 600×90=54,000 times per cycle</span>
+    <span class="hi-bad">return xp.where(is_los, pl_los,
+                   xp.maximum(pl_los, pl_nlos))</span></pre>
+      </div>
+      <div class="code-pane">
+        <div class="code-pane-header after">✓ After — Numba CUDA device function</div>
+        <pre><span class="cmt"># cuda_kernels.py — runs inside GPU kernel
+# One thread per (UE, cell) — all in parallel</span>
+<span class="deco">@cuda.jit(device=True)</span>
+<span class="kw">def</span> <span class="fn">path_loss_uma</span>(d3D, d2D, freq_ghz,
+                   h_bs, h_ut, is_los):
+    <span class="cmt"># Scalar: each thread does one pair</span>
+    log_f = math.log10(freq_ghz)
+    h_e   = <span class="num">1.0</span>
+    d_bp  = (<span class="num">4.0</span> * (h_bs - h_e) * (h_ut - h_e)
+             * freq_ghz * <span class="num">1e9</span> / C_LIGHT)
+
+    <span class="hi">if d3D &lt;= d_bp:</span>
+    <span class="hi">    pl_los = 28.0 + 22.0*math.log10(d3D) + 20.0*log_f</span>
+    <span class="hi">else:</span>
+    <span class="hi">    pl_los = (28.0 + 40.0*math.log10(d3D) + 20.0*log_f</span>
+    <span class="hi">              - 9.0*math.log10(d_bp**2+(h_bs-h_ut)**2))</span>
+    <span class="kw">if</span> is_los:
+        <span class="kw">return</span> pl_los
+    pl_nlos = (13.54 + 39.08*math.log10(d3D)
+               + 20.0*log_f - 0.6*(h_ut - 1.5))
+    <span class="hi">return max(pl_los, pl_nlos)</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="t2" class="tab-panel">
+    <div class="code-diff">
+      <div class="code-pane">
+        <div class="code-pane-header before">⚠ Before — Per-UE sequential loop</div>
+        <pre><span class="cmt"># radio_model.py — called once per cycle</span>
+<span class="kw">for</span> ue <span class="kw">in</span> active_ues:
+    ue_loc = XYZ(*ue[<span class="str">"state"</span>][<span class="str">"xyz"</span>])
+
+    <span class="kw">for</span> nb_report <span class="kw">in</span> ue.measurements:
+        cell_name = nb_report[<span class="str">'cell'</span>]
+        cell = self.cells[cell_name]
+
+        <span class="hi-bad">distance = ue_loc.distance(cell['xyz'])</span>
+        <span class="cmt"># ↑ Called ~36,000 times per datagen batch</span>
+        <span class="hi-bad">rx_power = self.received_power[cell_name](</span>
+        <span class="hi-bad">    cell, distance)</span>
+        ue_rf_report = nb_report[<span class="str">'value'</span>]
+        <span class="hi-bad">ue_rf_report.update(rx_power)</span>
+
+<span class="cmt"># Total: 600 UEs × 90 cells = 54,000 iters
+# Plus: called per simulation cycle
+# Result: 726 ms/cycle on 1 CPU core</span></pre>
+      </div>
+      <div class="code-pane">
+        <div class="code-pane-header after">✓ After — Batched GPU kernel (all cycles)</div>
+        <pre><span class="cmt"># cuda_kernels.py — one kernel for ALL cycles</span>
+<span class="deco">@cuda.jit</span>
+<span class="kw">def</span> <span class="fn">rsrp_3gpp_kernel</span>(positions, cell_xyz,
+    cell_power, ..., n_cycles, n_ue, n_cells):
+    <span class="cmt"># 2D thread grid: (cell, UE)</span>
+    <span class="hi">ci = (cuda.blockIdx.x * cuda.blockDim.x</span>
+    <span class="hi">      + cuda.threadIdx.x)</span>
+    <span class="hi">ui = (cuda.blockIdx.y * cuda.blockDim.y</span>
+    <span class="hi">      + cuda.threadIdx.y)</span>
+    <span class="kw">if</span> ui >= n_ue <span class="kw">or</span> ci >= n_cells:
+        <span class="kw">return</span>
+    cx, cy, cz = cell_xyz[ci]
+    pwr = cell_power[ci]
+
+    <span class="kw">for</span> c <span class="kw">in range</span>(n_cycles):  <span class="cmt"># loop over time</span>
+        ux, uy, uz = positions[c, ui]
+        dx, dy = ux-cx, uy-cy
+        d2D = math.sqrt(dx*dx + dy*dy)
+        d3D = math.sqrt(d2D*d2D + (uz-cz)**2)
+        pl  = <span class="fn">path_loss_uma</span>(d3D, d2D, ...)
+        sf  = <span class="fn">sos_eval</span>(ux, uy, ci, ...)
+        ag  = <span class="fn">beam_pattern_gain</span>(dx, dy, dz, ...)
+        <span class="hi">rsrp_out[c, ui, ci] = max(min(</span>
+        <span class="hi">    pwr - pl - sf + ag, -30.0), -157.0)</span>
+<span class="cmt"># Grid: (⌈n_cells/16⌉ × ⌈n_UEs/16⌉) × 16×16
+# All 54,000 pairs in parallel, all 512 cycles</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="t3" class="tab-panel">
+    <div class="code-diff">
+      <div class="code-pane">
+        <div class="code-pane-header before">⚠ Before — CuPy einsum (92 MB temp)</div>
+        <pre><span class="cmt"># tensor_sim.py — cell aggregation</span>
+<span class="cmt"># Builds large intermediate tensor</span>
+
+<span class="cmt"># serving_onehot: (cycles × UEs × cells)
+# thput:          (cycles × UEs)</span>
+<span class="hi-bad">cell_thput = cp.einsum(</span>
+<span class="hi-bad">    'cui,cu->ci',</span>
+<span class="hi-bad">    serving_onehot,  # 92 MB intermediate!</span>
+<span class="hi-bad">    thput            # must be materialized</span>
+<span class="hi-bad">)</span>
+
+<span class="cmt"># Problem:
+# - 92 MB one-hot tensor (bool) allocated
+# - cuBLAS dispatch overhead
+# - Cannot fuse with other reductions</span>
+cell_rank = cp.einsum(
+    <span class="str">'cui,cu->ci'</span>, serving_onehot, rank)
+<span class="cmt"># ↑ Another 92 MB pass</span></pre>
+      </div>
+      <div class="code-pane">
+        <div class="code-pane-header after">✓ After — Warp-shuffle reduction kernel</div>
+        <pre><span class="cmt"># cuda_kernels.py — zero intermediate tensor</span>
+<span class="deco">@cuda.jit</span>
+<span class="kw">def</span> <span class="fn">cell_aggregate_kernel</span>(serving, thput, prb,
+        rank, cell_thput, cell_prb,
+        cell_rank_sum, n_ue):
+    cycle = cuda.blockIdx.x
+    cell  = cuda.blockIdx.y
+    tid   = cuda.threadIdx.x  <span class="cmt"># 128 threads</span>
+
+    <span class="cmt"># Each thread accumulates its stripe</span>
+    t_sum = <span class="num">0.0</span>
+    <span class="hi">for ui in range(tid, n_ue, cuda.blockDim.x):</span>
+    <span class="hi">    if serving[cycle, ui] == cell:</span>
+    <span class="hi">        t_sum += thput[cycle, ui]</span>
+
+    <span class="cmt"># Warp shuffle: no shared memory needed</span>
+    mask = <span class="num">0xffffffff</span>
+    <span class="hi">for off in (16, 8, 4, 2, 1):</span>
+    <span class="hi">    t_sum += cuda.shfl_xor_sync(mask,t_sum,off)</span>
+
+    <span class="cmt"># Write once per warp</span>
+    <span class="kw">if</span> cuda.threadIdx.x & <span class="num">31</span> == <span class="num">0</span>:
+        shared_mem[cuda.threadIdx.x >> <span class="num">5</span>] = t_sum
+    cuda.syncthreads()
+    <span class="kw">if</span> cuda.threadIdx.x == <span class="num">0</span>:
+        <span class="hi">cell_thput[cycle, cell] = (</span>
+        <span class="hi">    shared_mem[0]+shared_mem[1]+</span>
+        <span class="hi">    shared_mem[2]+shared_mem[3])</span></pre>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════ SECTION 6: KERNEL ANATOMY ═══════════════════ -->
+<div class="page" id="kernels">
+<div class="section animate-in">
+  <div class="section-num">Section 06</div>
+  <h2>Kernel Anatomy — What Goes Where</h2>
+  <p class="lead">A CUDA kernel has four distinct regions. Understanding each lets you optimize systematically.</p>
+
+  <div class="kernel-anatomy">
+    <div class="kernel-header">
+      📐 Handover A3 Kernel Anatomy — <code>handover_kernel</code>
+    </div>
+    <div class="kernel-body">
+      <div class="kernel-segment">
+        <h4 style="color:var(--accent4)">① Thread Index → Work Item</h4>
+        <pre><span class="cmt"># Each thread owns one UE's entire timeline</span>
+<span class="hi">ui = (cuda.blockIdx.x * cuda.blockDim.x</span>
+<span class="hi">      + cuda.threadIdx.x)</span>
+<span class="kw">if</span> ui >= n_ue:
+    <span class="kw">return</span>  <span class="cmt"># guard — always needed</span>
+
+<span class="cmt"># Key insight: dependency is across time
+# (cycle t+1 needs result of cycle t)
+# Solution: each thread processes ALL cycles
+# for ITS OWN UE — serial in time, parallel in UE</span></pre>
+      </div>
+      <div class="kernel-segment">
+        <h4 style="color:var(--accent2)">② Load Constants → Registers</h4>
+        <pre><span class="cmt"># Read cell-level config into registers
+# (accessed ~512× per thread, so cache pays)</span>
+<span class="kw">for</span> nb_idx <span class="kw">in range</span>(max_nb):
+    nb = nb_table[srv, nb_idx]  <span class="cmt"># L2 cache</span>
+    <span class="kw">if</span> nb < <span class="num">0</span>:
+        <span class="kw">break</span>
+
+<span class="cmt"># Stack-resident state (fast):
+# srv, cooldown, ho_count all in registers</span>
+srv      = serving[<span class="num">0</span>, ui]
+cooldown = <span class="num">0</span>
+ho       = <span class="num">0</span></pre>
+      </div>
+      <div class="kernel-segment">
+        <h4 style="color:var(--accent3)">③ Main Computation Loop</h4>
+        <pre><span class="kw">for</span> c <span class="kw">in range</span>(n_cycles):
+    <span class="kw">if</span> cooldown > <span class="num">0</span>:
+        cooldown -= <span class="num">1</span>
+        serving[c+<span class="num">1</span>, ui] = srv
+        <span class="kw">continue</span>
+    srv_rsrp = rsrp[c, ui, srv]  <span class="cmt"># global mem</span>
+    <span class="kw">for</span> nb_idx <span class="kw">in range</span>(max_nb):
+        nb = nb_table[srv, nb_idx]
+        nb_rsrp = rsrp[c, ui, nb]  <span class="cmt"># global mem</span>
+        <span class="kw">if</span> nb_rsrp - hyst > srv_rsrp + a3_off:
+            srv = nb; ho += <span class="num">1</span>
+            cooldown = cooldown_cyc; <span class="kw">break</span>
+    serving[c+<span class="num">1</span>, ui] = srv</pre>
+      </div>
+      <div class="kernel-segment">
+        <h4 style="color:var(--accent)">④ Write Output Once</h4>
+        <pre><span class="cmt"># Writes happen every cycle (serving cell)
+# and once at end (HO count)
+# Minimize global writes — they're expensive</span>
+serving[c+<span class="num">1</span>, ui] = srv  <span class="cmt"># per cycle</span>
+ho_count[ui]       = ho  <span class="cmt"># once at end</span>
+
+<span class="cmt"># Grid: ⌈n_UEs / 256⌉ blocks × 256 threads
+# 600 UEs → 3 blocks (tiny launch overhead)
+# RTX 6000: 188 SMs → all 3 blocks
+# fit on &lt;1 SM, but still parallelizes 600 UEs</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- A3 Handover before/after -->
+  <div class="code-diff" style="margin-top:1.5rem;">
+    <div class="code-pane">
+      <div class="code-pane-header before">⚠ Before — Sequential per-cycle state machine</div>
+      <pre><span class="cmt"># gnodeb_model.py — runs per cycle, per UE</span>
+<span class="kw">for</span> c <span class="kw">in range</span>(n_cycles):
+    ue_signal = measurements[c]
+    serving = ue.serving_cell
+
+    <span class="hi-bad">for nb in serving_neighbors:</span>
+        nb_rsrp = rsrp_cache[(nb[<span class="str">'cell'</span>], ue)]
+        <span class="hi-bad">if nb_rsrp > serving_rsrp + a3_offset:</span>
+            <span class="cmt"># State update (serial dependency!)</span>
+            <span class="hi-bad">serving = nb[<span class="str">'cell'</span>]</span>
+            <span class="hi-bad">ue.serving_cell = serving</span>
+            ho_count += <span class="num">1</span>
+
+<span class="cmt"># Problem: cycle t+1 depends on cycle t
+# → Cannot parallelize across cycles
+# → 1,415 cycles × 600 UEs = 849,000 updates</span></pre>
+    </div>
+    <div class="code-pane">
+      <div class="code-pane-header after">✓ After — Parallel across UEs, serial in time</div>
+      <pre><span class="cmt"># cuda_kernels.py — 600 threads, each owns 1 UE</span>
+<span class="deco">@cuda.jit</span>
+<span class="kw">def</span> <span class="fn">handover_kernel</span>(rsrp, serving, nb_table,
+                     a3_off, hyst, cooldown_cyc,
+                     ho_count, n_cycles, n_ue):
+    ui = (cuda.blockIdx.x * cuda.blockDim.x
+          + cuda.threadIdx.x)
+    <span class="kw">if</span> ui >= n_ue: <span class="kw">return</span>
+
+    cooldown = <span class="num">0</span>; ho = <span class="num">0</span>
+    srv = serving[<span class="num">0</span>, ui]
+
+    <span class="hi">for c in range(n_cycles):  # serial per UE</span>
+        <span class="hi">srv_rsrp = rsrp[c, ui, srv]</span>
+        <span class="hi">for nb_idx in range(max_nb):</span>
+        <span class="hi">    nb = nb_table[srv, nb_idx]</span>
+        <span class="hi">    if rsrp[c,ui,nb]-hyst > srv_rsrp+a3_off:</span>
+        <span class="hi">        srv=nb; ho+=1; break</span>
+        <span class="hi">serving[c+1, ui] = srv</span>
+
+    ho_count[ui] = ho
+<span class="cmt"># All 600 UEs run simultaneously on the GPU
+# Each thread is its own state machine
+# RTX 6000: 26s total for 43,200 cycles!</span></pre>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════ SECTION 7: BENCHMARK ═══════════════════ -->
+<div class="page" id="benchmark">
+<div class="section animate-in">
+  <div class="section-num">Section 07</div>
+  <h2>Benchmarking — Measuring What Matters</h2>
+  <p class="lead">A benchmark isn't just timing. It validates correctness, quantifies improvement, and finds your next bottleneck.</p>
+
+  <!-- Before/after nsys trace -->
+  <div class="nsys-trace">
+    <div class="nsys-title">📊 Nsight Systems — GPU vs CPU Phase Comparison (normalized per cycle)</div>
+
+    <div style="margin-bottom:1.5rem;">
+      <div style="font-size:.78rem; font-weight:700; color:var(--text-dim); margin-bottom:.75rem;">phase:rf (RF datagen)</div>
+      <div class="flame-section">
+        <div class="flame-label"><span class="name">CPU</span> <span>726 ms/cycle</span></div>
+        <div class="flame-bar-bg">
+          <div class="flame-bar-fill flame-cpu" id="rfCpu" style="width:0%">726 ms</div>
+        </div>
+      </div>
+      <div class="flame-section" style="margin-top:.5rem;">
+        <div class="flame-label"><span class="name">GPU</span> <span>0.65 ms/cycle</span></div>
+        <div class="flame-bar-bg">
+          <div class="flame-bar-fill flame-gpu" id="rfGpu" style="width:0%">0.65 ms</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:1.5rem;">
+      <div style="font-size:.78rem; font-weight:700; color:var(--text-dim); margin-bottom:.75rem;">phase:kpi</div>
+      <div class="flame-section">
+        <div class="flame-label"><span class="name">CPU</span> <span>3.9 ms/cycle</span></div>
+        <div class="flame-bar-bg">
+          <div class="flame-bar-fill flame-cpu" id="kpiCpu" style="width:0%">3.9 ms</div>
+        </div>
+      </div>
+      <div class="flame-section" style="margin-top:.5rem;">
+        <div class="flame-label"><span class="name">GPU</span> <span>0.07 ms/cycle</span></div>
+        <div class="flame-bar-bg">
+          <div class="flame-bar-fill flame-gpu" id="kpiGpu" style="width:0%">0.07 ms</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:.78rem; font-weight:700; color:var(--text-dim); margin-bottom:.75rem;">phase:output</div>
+      <div class="flame-section">
+        <div class="flame-label"><span class="name">CPU</span> <span>2.4 ms/cycle</span></div>
+        <div class="flame-bar-bg">
+          <div class="flame-bar-fill flame-cpu" id="outCpu" style="width:0%">2.4 ms</div>
+        </div>
+      </div>
+      <div class="flame-section" style="margin-top:.5rem;">
+        <div class="flame-label"><span class="name">GPU</span> <span>0.07 ms/cycle</span></div>
+        <div class="flame-bar-bg">
+          <div class="flame-bar-fill flame-gpu" id="outGpu" style="width:0%">0.07 ms</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Benchmark script pattern -->
+  <div class="code-diff">
+    <div class="code-pane">
+      <div class="code-pane-header before">⚠ Wrong benchmark approach</div>
+      <pre><span class="cmt"># Don't do this — includes JIT warmup</span>
+<span class="kw">import</span> time
+
+t0 = time.perf_counter()
+<span class="hi-bad">result = my_gpu_kernel(data)  # includes JIT!</span>
+t1 = time.perf_counter()
+print(<span class="str">f"Time: {t1-t0:.3f}s"</span>)
+
+<span class="cmt"># Problems:
+# 1. First call triggers Numba JIT compilation
+#    (can be 10-30 seconds!)
+# 2. No warmup = GPU clock not at boost freq
+# 3. Single measurement = high variance
+# 4. No parity check = maybe wrong answer</span></pre>
+    </div>
+    <div class="code-pane">
+      <div class="code-pane-header after">✓ Correct benchmark approach</div>
+      <pre><span class="cmt"># benchmark.py — from AI-RSG</span>
+WARMUP_ROUNDS = <span class="num">2</span>   <span class="cmt"># trigger JIT compilation</span>
+MEASURE_ROUNDS = <span class="num">3</span>  <span class="cmt"># actual measurement</span>
+
+<span class="cmt"># 1. Parity check first</span>
+cpu_result = reference_cpu(data)
+gpu_result = gpu_kernel(data)
+<span class="hi">np.testing.assert_allclose(</span>
+<span class="hi">    gpu_result, cpu_result, atol=1e-4,</span>
+<span class="hi">    err_msg=<span class="str">"GPU parity failed!"</span>)</span>
+
+<span class="cmt"># 2. Warmup (JIT + GPU clock boost)</span>
+<span class="kw">for</span> _ <span class="kw">in range</span>(WARMUP_ROUNDS):
+    <span class="hi">_ = gpu_kernel(data)</span>
+    <span class="hi">cp.cuda.Stream.null.synchronize()</span>
+
+<span class="cmt"># 3. Timed measurement</span>
+times = []
+<span class="kw">for</span> _ <span class="kw">in range</span>(MEASURE_ROUNDS):
+    t0 = time.perf_counter()
+    _ = gpu_kernel(data)
+    <span class="hi">cp.cuda.Stream.null.synchronize()</span> <span class="cmt"># wait!</span>
+    times.append(time.perf_counter() - t0)
+print(<span class="str">f"Median: {np.median(times)*1000:.1f}ms"</span>)
+print(<span class="str">f"Speedup: {cpu_time/np.median(times):.0f}×"</span>)</pre>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <strong>Critical:</strong> Always call <code>cp.cuda.Stream.null.synchronize()</code> (CuPy) or <code>cuda.synchronize()</code> (Numba) before stopping the timer. GPU kernel launches are asynchronous — timing without sync measures kernel <em>launch</em>, not <em>execution</em>.
+  </div>
+
+  <!-- Checklist -->
+  <h3 style="font-size:1rem; font-weight:700; margin:2rem 0 .75rem; color:#fff;">GPU Acceleration Checklist</h3>
+  <ul class="checklist">
+    <li><span class="check-icon check-done">✓</span> Profile first — identify the real hotspot (use nsys/nvtx)</li>
+    <li><span class="check-icon check-done">✓</span> Verify parallelism — confirm computations are independent</li>
+    <li><span class="check-icon check-done">✓</span> Batch across time/space — at least 1k elements for GPU to win</li>
+    <li><span class="check-icon check-done">✓</span> Minimize H2D/D2H transfers — upload once, download once per batch</li>
+    <li><span class="check-icon check-done">✓</span> Use float32 where precision allows — 2× throughput vs float64</li>
+    <li><span class="check-icon check-done">✓</span> Validate parity against CPU reference before benchmarking</li>
+    <li><span class="check-icon check-done">✓</span> Warm up the GPU (2 rounds) before measuring</li>
+    <li><span class="check-icon check-done">✓</span> Synchronize before stopping the timer</li>
+    <li><span class="check-icon check-warn">→</span> Profile again after GPU — find the new bottleneck (Amdahl's Law)</li>
+    <li><span class="check-icon check-warn">→</span> RSG next target: handover kernel (26s of 28s phase:rf)</li>
+  </ul>
+
+  <!-- Final speedup summary -->
+  <div class="pipeline-wrap" style="margin-top:2rem;">
+    <div class="pipeline-title">🏁 AI-RSG GPU Pipeline — Final Results (RTX PRO 6000 Blackwell, 188 SMs)</div>
+    <div class="pipeline">
+      <div class="pipeline-stage stage-rf">
+        <div class="phase-icon">📡</div>
+        <div class="phase-name">RF</div>
+        <div class="phase-time" style="color:var(--cpu-color)">CPU: 726 ms</div>
+        <div class="phase-time" style="color:var(--gpu-color)">GPU: 0.65 ms</div>
+      </div>
+      <div class="pipeline-stage stage-ho">
+        <div class="phase-icon">🔀</div>
+        <div class="phase-name">Handover</div>
+        <div class="phase-time" style="color:var(--cpu-color)">CPU: —</div>
+        <div class="phase-time" style="color:var(--accent2)">GPU: 0.60 ms</div>
+      </div>
+      <div class="pipeline-stage stage-kpi">
+        <div class="phase-icon">📊</div>
+        <div class="phase-name">KPI</div>
+        <div class="phase-time" style="color:var(--cpu-color)">CPU: 3.9 ms</div>
+        <div class="phase-time" style="color:var(--accent4)">GPU: 0.07 ms</div>
+      </div>
+      <div class="pipeline-stage stage-out">
+        <div class="phase-icon">💾</div>
+        <div class="phase-name">Output</div>
+        <div class="phase-time" style="color:var(--cpu-color)">CPU: 2.4 ms</div>
+        <div class="phase-time" style="color:var(--accent3)">GPU: 0.07 ms</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<footer>
+  <p>GPU Acceleration Engineering Guide · Built from <a href="#">AI-RSG cto-exp-gpu-accel</a> · RTX PRO 6000 Blackwell (CC 12.0, sm_120a)</p>
+  <p style="margin-top:.5rem; color:#374151;">VIAVI Solutions — Internal use only</p>
+</footer>
+
+<script>
+// ── Wave canvas animation ──
+const canvas = document.getElementById('waveCanvas');
+const ctx = canvas.getContext('2d');
+function resizeCanvas() {
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+let t = 0;
+function drawWave() {
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  const waves = [
+    { color: '#00d4ff', amp: 12, freq: .018, speed: .04, phase: 0, alpha: .6 },
+    { color: '#7c3aed', amp: 8, freq: .025, speed: .06, phase: 2, alpha: .4 },
+    { color: '#10b981', amp: 6, freq: .012, speed: .03, phase: 4, alpha: .3 },
+  ];
+  waves.forEach(wave => {
+    ctx.beginPath();
+    ctx.strokeStyle = wave.color;
+    ctx.globalAlpha = wave.alpha;
+    ctx.lineWidth = 2 * devicePixelRatio;
+    for (let x = 0; x < w; x++) {
+      const y = h/2 + wave.amp * devicePixelRatio
+        * Math.sin(wave.freq * x / devicePixelRatio + t * wave.speed + wave.phase);
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+  t++;
+  requestAnimationFrame(drawWave);
+}
+drawWave();
+
+// ── Counter animation ──
+function animateCounter(el, target, suffix, duration) {
+  const start = performance.now();
+  function update(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 4);
+    const val = Math.round(ease * target);
+    el.textContent = (val >= 1000 ? (val/1000).toFixed(0)+'k' : val) + suffix;
+    if (p < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+// ── Intersection Observer for animations ──
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+
+// Trigger counters when hero visible
+const heroObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      animateCounter(document.getElementById('cnt1'), 1100, '×', 2000);
+      animateCounter(document.getElementById('cnt2'), 55, '×', 1400);
+      animateCounter(document.getElementById('cnt3'), 977, '×', 2200);
+      animateCounter(document.getElementById('cnt4'), 14, '×', 1200);
+      heroObserver.disconnect();
+    }
+  });
+}, { threshold: 0.3 });
+heroObserver.observe(document.querySelector('.hero'));
+
+// Animate benchmark bars when in view
+const barObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      setTimeout(() => {
+        document.getElementById('rfCpu').style.width = '100%';
+        document.getElementById('rfGpu').style.width = '0.09%';
+        document.getElementById('kpiCpu').style.width = '53%';
+        document.getElementById('kpiGpu').style.width = '1%';
+        document.getElementById('outCpu').style.width = '33%';
+        document.getElementById('outGpu').style.width = '1%';
+      }, 200);
+      barObserver.disconnect();
+    }
+  });
+}, { threshold: 0.3 });
+const nsysTrace = document.querySelector('.nsys-trace');
+if (nsysTrace) barObserver.observe(nsysTrace);
+
+// Animate flame bars
+const flameObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      setTimeout(() => {
+        document.getElementById('rfCpu').style.width = '100%';
+        document.getElementById('rfGpu').style.width = '0.09%';
+        document.getElementById('kpiCpu').style.width = '53%';
+        document.getElementById('kpiGpu').style.width = '1%';
+        document.getElementById('outCpu').style.width = '33%';
+        document.getElementById('outGpu').style.width = '1%';
+      }, 300);
+    }
+  });
+}, { threshold: 0.3 });
+
+// Add transition to flame bars
+['rfCpu','rfGpu','kpiCpu','kpiGpu','outCpu','outGpu'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.style.transition = 'width 1.6s cubic-bezier(.16,1,.3,1)';
+});
+
+// ── GPU grid fill ──
+const gpuGrid = document.getElementById('gpuGrid');
+for (let i = 0; i < 64; i++) {
+  const b = document.createElement('div');
+  b.className = 'gpu-block';
+  b.style.animationDelay = (Math.random() * .4) + 's';
+  gpuGrid.appendChild(b);
+}
+
+// ── Tabs ──
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Cycle Tiling Animation ──
+(function() {
+  const N = 64; // represent 512 cycles as 64 cells (8×8 visual)
+  const cpuTrack = document.getElementById('cpuTrack');
+  const gpuGrid  = document.getElementById('gpuBatchGrid');
+  if (!cpuTrack || !gpuGrid) return;
+
+  // Build CPU cells
+  const cpuCells = [];
+  for (let i = 0; i < N; i++) {
+    const d = document.createElement('div');
+    d.className = 'tiling-cpu-cell';
+    d.title = `Cycle ${i * 8 + 1}–${i * 8 + 8}`;
+    cpuTrack.appendChild(d);
+    cpuCells.push(d);
+  }
+
+  // Build GPU cells
+  const gpuCells = [];
+  for (let i = 0; i < N; i++) {
+    const d = document.createElement('div');
+    d.className = 'tiling-gpu-cell';
+    gpuGrid.appendChild(d);
+    gpuCells.push(d);
+  }
+
+  let cpuIdx = 0;
+  let gpuPhase = 'idle'; // idle | uploading | blasting | done
+  let gpuTimer = 0;
+  const pointer = document.getElementById('cpuPointer');
+
+  // CPU animation: march one cell at a time
+  function stepCpu() {
+    // clear previous active
+    if (cpuIdx > 0) {
+      cpuCells[cpuIdx - 1].classList.remove('active');
+      cpuCells[cpuIdx - 1].classList.add('done');
+    }
+    if (cpuIdx < N) {
+      cpuCells[cpuIdx].classList.add('active');
+      if (pointer) pointer.textContent = `▼ cycle ${cpuIdx * 8 + 1}–${cpuIdx * 8 + 8}`;
+      cpuIdx++;
+      setTimeout(stepCpu, 120);
+    } else {
+      // reset after pause
+      if (pointer) pointer.textContent = '↺ restarting…';
+      setTimeout(() => {
+        cpuCells.forEach(c => c.classList.remove('active','done'));
+        cpuIdx = 0;
+        setTimeout(stepCpu, 400);
+      }, 1200);
+    }
+  }
+
+  // GPU animation: flash all at once
+  function stepGpu() {
+    switch (gpuPhase) {
+      case 'idle':
+        gpuCells.forEach(c => { c.classList.remove('blast'); c.style.background=''; c.style.borderColor=''; });
+        gpuPhase = 'uploading';
+        gpuTimer = 0;
+        setTimeout(stepGpu, 600);
+        break;
+      case 'uploading':
+        // light up cells one-by-one rapidly (simulating upload)
+        if (gpuTimer < N) {
+          gpuCells[gpuTimer].style.background = 'rgba(0,212,255,.25)';
+          gpuCells[gpuTimer].style.borderColor = 'rgba(0,212,255,.4)';
+          gpuTimer++;
+          setTimeout(stepGpu, 18);
+        } else {
+          gpuPhase = 'blasting';
+          setTimeout(stepGpu, 200);
+        }
+        break;
+      case 'blasting':
+        // all flash simultaneously
+        gpuCells.forEach(c => c.classList.add('blast'));
+        gpuPhase = 'done';
+        setTimeout(stepGpu, 900);
+        break;
+      case 'done':
+        gpuPhase = 'idle';
+        setTimeout(stepGpu, 1600);
+        break;
+    }
+  }
+
+  // Start when box scrolls into view
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { stepCpu(); stepGpu(); obs.disconnect(); }
+    });
+  }, { threshold: 0.3 });
+  const box = document.getElementById('cycleTilingBox');
+  if (box) obs.observe(box);
+})();
+
+// ── Warp / SM Occupancy Animation ──
+(function() {
+  const warpRows = document.getElementById('warpRows');
+  const smTimeline = document.getElementById('smTimeline');
+  const smStatus = document.getElementById('smStatus');
+  const smTlNote = document.getElementById('smTlNote');
+  if (!warpRows || !smTimeline) return;
+
+  const NWARPS = 4;
+  const NTHREADS = 16; // visual threads per warp (32 is too wide)
+  const warpEls = [];
+
+  // States: running | waiting | ready | idle
+  const warpStates = ['running', 'ready', 'ready', 'ready'];
+  const warpNames = ['Warp 0', 'Warp 1', 'Warp 2', 'Warp 3'];
+
+  for (let w = 0; w < NWARPS; w++) {
+    const row = document.createElement('div');
+    row.className = 'warp-row';
+    const lbl = document.createElement('div');
+    lbl.className = 'warp-row-label';
+    lbl.textContent = warpNames[w];
+    row.appendChild(lbl);
+    const threads = document.createElement('div');
+    threads.className = 'warp-threads';
+    const threadEls = [];
+    for (let t = 0; t < NTHREADS; t++) {
+      const th = document.createElement('div');
+      th.className = 'warp-thread';
+      threads.appendChild(th);
+      threadEls.push(th);
+    }
+    row.appendChild(threads);
+    warpRows.appendChild(row);
+    warpEls.push({ row, lbl, threadEls });
+  }
+
+  function applyState(wi, state) {
+    warpEls[wi].threadEls.forEach(t => {
+      t.className = 'warp-thread' + (state !== 'idle' ? ' ' + state : '');
+    });
+    warpEls[wi].lbl.style.color = state === 'running' ? 'var(--accent3)' :
+                                   state === 'waiting' ? 'var(--accent4)' :
+                                   state === 'ready'   ? 'var(--accent2)' : 'var(--text-dim)';
+  }
+
+  // Sequence: warp0 runs → hits memory → stalls → warp1 takes over → etc.
+  // Phase durations (ms): run=600, stall=1000, switch=100
+  const sequence = [
+    { states: ['running','ready','ready','ready'],  status: '⚡ Warp 0 computing…',            note: 'Warp 0 is running — 3 warps waiting', tl: ['W0','W0','W0'] },
+    { states: ['waiting','running','ready','ready'], status: '🔄 Warp 0 stalled for memory — SM instantly switches to Warp 1', note: 'With 4 warps: SM never idles!', tl: ['W0','W0','W0','W1','W1','W1'] },
+    { states: ['waiting','waiting','running','ready'], status: '🔄 Warp 1 stalled — SM switches to Warp 2', note: 'Warps 0 & 1 still waiting for memory', tl: ['W0','W0','W0','W1','W1','W1','W2','W2'] },
+    { states: ['running','waiting','waiting','ready'], status: '✅ Warp 0 memory ready — back to computing', note: 'SM rotates through ready warps continuously', tl: ['W0','W0','W0','W1','W1','W1','W2','W2','W0','W0'] },
+  ];
+
+  let seqIdx = 0;
+
+  // Build timeline segments
+  const segColors = {
+    'W0': 'var(--accent3)', 'W1': 'var(--accent)', 'W2': 'var(--accent2)', 'W3': 'var(--accent4)',
+    'IDLE': 'var(--surface2)'
+  };
+  const allTlSegs = [];
+
+  function updateTimeline(segs) {
+    smTimeline.innerHTML = '';
+    segs.forEach(s => {
+      const el = document.createElement('div');
+      el.className = 'sm-tl-seg';
+      el.style.background = segColors[s] || 'var(--surface2)';
+      el.style.width = '24px';
+      el.textContent = s !== 'IDLE' ? s : '';
+      smTimeline.appendChild(el);
+    });
+  }
+
+  const tlHistory = [];
+  function runSeq() {
+    const s = sequence[seqIdx % sequence.length];
+    s.states.forEach((st, wi) => applyState(wi, st));
+    if (smStatus) smStatus.textContent = s.status;
+    if (smTlNote) smTlNote.textContent = s.note;
+    // Extend timeline
+    s.tl.forEach(seg => { tlHistory.push(seg); if (tlHistory.length > 28) tlHistory.shift(); });
+    updateTimeline(tlHistory);
+    seqIdx++;
+    setTimeout(runSeq, seqIdx % 2 === 0 ? 900 : 700);
+  }
+
+  const obs2 = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { runSeq(); obs2.disconnect(); }
+    });
+  }, { threshold: 0.3 });
+  const box2 = document.getElementById('occupancyBox');
+  if (box2) obs2.observe(box2);
+})();
+
+// ── Roofline canvas ──
+(function() {
+  const c = document.getElementById('rooflineCanvas');
+  if (!c) return;
+  const ctx2 = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const pad = { l: 60, r: 20, t: 20, b: 50 };
+  const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+
+  // log-log axes: x = AI (0.1 – 200 FLOP/B), y = GFLOPS (1 – 200)
+  const xMin = Math.log10(0.1), xMax = Math.log10(200);
+  const yMin = Math.log10(1),   yMax = Math.log10(200);
+
+  function toX(ai) { return pad.l + (Math.log10(ai) - xMin) / (xMax - xMin) * iw; }
+  function toY(gf) { return pad.t + ih - (Math.log10(gf) - yMin) / (yMax - yMin) * ih; }
+
+  ctx2.fillStyle = '#0d1117';
+  ctx2.fillRect(0, 0, W, H);
+
+  // Grid
+  ctx2.strokeStyle = '#1e3a5f'; ctx2.lineWidth = 1;
+  [0.1,0.3,1,3,10,30,100].forEach(v => {
+    ctx2.beginPath(); ctx2.moveTo(toX(v), pad.t); ctx2.lineTo(toX(v), pad.t+ih); ctx2.stroke();
+  });
+  [1,3,10,30,100].forEach(v => {
+    ctx2.beginPath(); ctx2.moveTo(pad.l, toY(v)); ctx2.lineTo(pad.l+iw, toY(v)); ctx2.stroke();
+  });
+
+  // Ridge point: RTX 6000: 82,600 GFLOPS / 960 GB/s = 86 FLOP/B
+  const ridge = 86;
+  const peakFlops = 82600; // in GFLOPS is too high for chart; use relative — cap at 82.6 TFLOPS shown as 100 on chart
+
+  // Memory-bound slope (BW = 960 GB/s → GFLOPS = AI * 960)
+  ctx2.beginPath(); ctx2.strokeStyle = '#ef444488'; ctx2.lineWidth = 2.5;
+  ctx2.setLineDash([]);
+  const ai_start = 0.12, ai_ridge = ridge;
+  ctx2.moveTo(toX(ai_start), toY(ai_start * 960 / 1000)); // 960 GB/s, normalise
+  ctx2.lineTo(toX(Math.min(ai_ridge, 100)), toY(Math.min(ai_ridge * 960/1000, 82.6)));
+  ctx2.stroke();
+
+  // Compute ceiling (flat line at 82.6 TFLOPS → 82.6 on chart y)
+  ctx2.beginPath(); ctx2.strokeStyle = '#f59e0b88'; ctx2.lineWidth = 2.5; ctx2.setLineDash([6,4]);
+  ctx2.moveTo(toX(ridge), toY(82.6)); ctx2.lineTo(toX(190), toY(82.6)); ctx2.stroke();
+  ctx2.setLineDash([]);
+
+  // Labels
+  ctx2.fillStyle = '#ef4444'; ctx2.font = '11px sans-serif';
+  ctx2.fillText('Memory-bound', toX(0.15), toY(0.4));
+  ctx2.fillStyle = '#f59e0b';
+  ctx2.fillText('Compute-bound (82.6 TFLOPS FP32)', toX(ridge)+4, toY(82.6)-6);
+
+  // Kernels as dots
+  const kernels = [
+    { name: 'rsrp_3gpp', ai: 8,   gf: 18,  color: '#10b981' },
+    { name: 'handover',  ai: 2,   gf: 1.2, color: '#00d4ff' },
+    { name: 'kpi_link',  ai: 6,   gf: 12,  color: '#10b981' },
+    { name: 'cell_agg',  ai: 0.4, gf: 0.3, color: '#ef4444' },
+  ];
+  kernels.forEach(k => {
+    const x = toX(k.ai), y = toY(k.gf);
+    ctx2.beginPath(); ctx2.arc(x, y, 7, 0, Math.PI*2);
+    ctx2.fillStyle = k.color; ctx2.fill();
+    ctx2.fillStyle = '#e2e8f0'; ctx2.font = 'bold 10px sans-serif';
+    ctx2.fillText(k.name, x+10, y+4);
+  });
+
+  // Axes labels
+  ctx2.fillStyle = '#64748b'; ctx2.font = '11px sans-serif';
+  ctx2.fillText('Arithmetic Intensity (FLOP/byte) →', pad.l, H - 8);
+  ctx2.save(); ctx2.translate(14, pad.t + ih/2); ctx2.rotate(-Math.PI/2);
+  ctx2.fillText('↑ GFLOPS achieved', -40, 0); ctx2.restore();
+
+  // Axis tick labels
+  ctx2.fillStyle = '#64748b'; ctx2.font = '10px sans-serif';
+  [0.1,1,10,100].forEach(v => { ctx2.fillText(v, toX(v)-8, pad.t+ih+14); });
+  [1,10,100].forEach(v => { ctx2.fillText(v, 4, toY(v)+4); });
+})();
+
+// ── Transfer viz bars animation ──
+(function() {
+  const rows = [
+    { id: 'tviz1', pct: 0.8 },   // transfer: visually small but non-zero
+    { id: 'tviz2', pct: 5 },
+    { id: 'tviz3', pct: 100 },
+  ];
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        rows.forEach((r, i) => {
+          const el = document.getElementById(r.id);
+          if (!el) return;
+          setTimeout(() => { el.style.width = r.pct + '%'; }, i * 150);
+        });
+        obs.disconnect();
+      }
+    });
+  }, { threshold: 0.4 });
+  const tviz = document.querySelector('.transfer-viz');
+  if (tviz) obs.observe(tviz);
+})();
+
+// ── Animate nsys bars on load with delay ──
+window.addEventListener('load', () => {
+  // Animate the profiling section bars when they scroll into view
+  document.querySelectorAll('.nsys-fill').forEach(el => {
+    const originalWidth = el.style.width;
+    el.style.width = '0';
+    el.style.transition = 'width 1.4s cubic-bezier(.16,1,.3,1)';
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          setTimeout(() => { el.style.width = originalWidth; }, 200);
+          obs.disconnect();
+        }
+      });
+    }, { threshold: 0.5 });
+    obs.observe(el);
+  });
+});
+</script>
+
+</body>
+</html>
