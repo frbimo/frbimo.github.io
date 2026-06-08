@@ -756,6 +756,7 @@
   <a href="#planning">Plan</a>
   <a href="#batch">Batch</a>
   <a href="#kernels">Kernels</a>
+  <a href="#grid">Grid Sizing</a>
   <a href="#kpi">GPU KPIs</a>
   <a href="#benchmark">Benchmark</a>
 </nav>
@@ -1782,10 +1783,164 @@ ho_count[ui]       = ho  <span class="cmt"># once at end</span>
 </div>
 </div>
 
-<!-- ═══════════════════ SECTION 7: BENCHMARK ═══════════════════ -->
-<div class="page" id="benchmark">
+<!-- ═══════════════════ SECTION 7: GRID SIZING ═══════════════════ -->
+<div class="page" id="grid">
 <div class="section animate-in">
   <div class="section-num">Section 07</div>
+  <h2>Sizing the Grid — How Many Threads & Blocks?</h2>
+  <p class="lead">A GPU launch is a <strong>grid of blocks</strong>, and each block is a group of <strong>threads</strong>. Sizing the grid is not guesswork — it falls straight out of your <em>scenario dimensions</em>. The rule: launch one thread per independent work item, then round up into blocks.</p>
+
+  <!-- ── THE 3-STEP RECIPE ── -->
+  <div class="explainer-box">
+    <div class="explainer-header">
+      <div class="explainer-icon">📏</div>
+      <div>
+        <div class="explainer-title">The 3-Step Grid Recipe</div>
+        <div class="explainer-sub">Works for every kernel — derive the launch from the workload, never hard-code it.</div>
+      </div>
+    </div>
+    <div class="explainer-body">
+      <div class="explainer-concept">
+        <div class="ec-label">① Count work items — N</div>
+        <div class="ec-text">Find the <strong>independent</strong> axes of your scenario and multiply them. These are the dimensions that can run at the same time with no data dependency. This product is <code>N</code>.</div>
+      </div>
+      <div class="explainer-concept">
+        <div class="ec-label">② Pick threads / block — TPB</div>
+        <div class="ec-text">A fixed, hardware-friendly constant. Must be a <strong>multiple of 32</strong> (the warp size). <code>256</code> is the safe default; <code>128</code>–<code>512</code> are all reasonable. This is the one number you choose by hand.</div>
+      </div>
+      <div class="explainer-concept">
+        <div class="ec-label">③ Derive blocks</div>
+        <div class="ec-text">Round up so every work item is covered: <code>blocks = ⌈N / TPB⌉</code>. The launch covers <code>blocks × TPB</code> threads — always ≥ N, so the kernel needs a guard to drop the few extra threads.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── THE FORMULA ── -->
+  <div class="formula-box">
+    <div class="formula-line">
+      <span class="formula-term launch">blocks</span>
+      <span class="formula-op">=</span>
+      <span class="formula-op">⌈</span>
+      <span class="formula-term gpu">N</span>
+      <span class="formula-op">/</span>
+      <span class="formula-term kernel">TPB</span>
+      <span class="formula-op">⌉</span>
+    </div>
+    <div class="formula-condition">Threads launched = <strong>blocks × TPB ≥ N</strong> — the kernel's first line must be <code style="color:var(--accent3)">if idx &gt;= N: return</code></div>
+    <div class="formula-legend">
+      <span class="legend-item"><span style="color:var(--accent)">N</span> = product of independent scenario dimensions</span>
+      <span class="legend-item kernel-leg">TPB = threads per block (32-multiple, default 256)</span>
+      <span class="legend-item launch-leg">blocks = how many SMs-worth of work to schedule</span>
+    </div>
+  </div>
+
+  <!-- ── MAP SCENARIO → N ── -->
+  <h3 class="kpi-heading">Map your scenario to <code>N</code></h3>
+  <p class="kpi-subtext">N is not a tuning knob — it is dictated by which axes of the scenario are independent. The two RSG kernels show the two extremes.</p>
+
+  <div class="code-diff" style="margin-top:1rem;">
+    <div class="code-pane">
+      <div class="code-pane-header after">RSRP — fully independent (3 axes)</div>
+      <pre><span class="cmt"># Every (cycle, UE, cell) RSRP value is a pure
+# function of position + cell params → no deps.
+# All three axes parallelize.</span>
+N = n_cycles * n_ue * n_cells
+
+<span class="cmt"># City scenario: 512 × 600 × 90</span>
+N = <span class="num">27_648_000</span>   <span class="cmt"># 27.6 M threads — saturates GPU</span></pre>
+    </div>
+    <div class="code-pane">
+      <div class="code-pane-header before">Handover — one axis only (UE)</div>
+      <pre><span class="cmt"># serving[c+1] depends on serving[c] → the cycle
+# axis is SERIAL. Only the UE axis is independent.
+# Each thread walks all cycles for its own UE.</span>
+N = n_ue
+
+<span class="cmt"># City scenario: 600 UEs</span>
+N = <span class="num">600</span>          <span class="cmt"># only 600 threads — under-fills GPU</span></pre>
+    </div>
+  </div>
+
+  <!-- ── SCENARIO CALCULATOR ── -->
+  <h3 class="kpi-heading" style="margin-top:2rem;">Worked scenarios (TPB = 256)</h3>
+  <p class="kpi-subtext">Same formula, three scenario scales. Notice how the RSRP grid grows with the scenario while the handover grid barely moves — that asymmetry is why handover is the bottleneck.</p>
+
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-yellow">
+      <div class="kpi-card-label">Lab — 50 UE · 12 cells · 512 cyc</div>
+      <div class="kpi-card-num">307 k</div>
+      <div class="kpi-card-desc"><strong>RSRP:</strong> N = 307 k → <code>1200</code> blocks.<br><strong>Handover:</strong> N = 50 → <code>1</code> block (GPU mostly idle here).</div>
+    </div>
+    <div class="kpi-card kpi-green">
+      <div class="kpi-card-label">City — 600 UE · 90 cells · 512 cyc</div>
+      <div class="kpi-card-num">27.6 M</div>
+      <div class="kpi-card-desc"><strong>RSRP:</strong> N = 27.6 M → <code>107 813</code> blocks.<br><strong>Handover:</strong> N = 600 → <code>3</code> blocks.</div>
+    </div>
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-card-label">Dense — 2000 UE · 200 cells · 512 cyc</div>
+      <div class="kpi-card-num">204.8 M</div>
+      <div class="kpi-card-desc"><strong>RSRP:</strong> N = 204.8 M → <code>800 000</code> blocks.<br><strong>Handover:</strong> N = 2000 → <code>8</code> blocks.</div>
+    </div>
+  </div>
+
+  <!-- ── IMPLEMENTATION ── -->
+  <h3 class="kpi-heading" style="margin-top:2rem;">How to implement it</h3>
+  <p class="kpi-subtext">Compute the grid from the live scenario sizes at launch time. Below: a 1-D launch (handover) and a 2-D launch (RSRP), in Numba.</p>
+
+  <div class="code-diff" style="margin-top:1rem;">
+    <div class="code-pane">
+      <div class="code-pane-header after">1-D grid — handover_kernel</div>
+      <pre><span class="cmt"># N = n_ue (the only independent axis)</span>
+tpb    = <span class="num">256</span>
+blocks = (n_ue + tpb - <span class="num">1</span>) // tpb   <span class="cmt"># ⌈N/TPB⌉</span>
+
+handover_kernel[blocks, tpb](
+    d_rsrp, d_serving, d_nb_table,
+    a3_off, hyst, cooldown, d_ho_count,
+    n_cycles, n_ue)
+
+<span class="cmt"># inside the kernel — drop the extra threads:</span>
+<span class="kw">def</span> <span class="fn">handover_kernel</span>(...):
+    ui = cuda.grid(<span class="num">1</span>)
+    <span class="kw">if</span> ui >= n_ue: <span class="kw">return</span>     <span class="cmt"># the guard</span></pre>
+    </div>
+    <div class="code-pane">
+      <div class="code-pane-header after">2-D grid — rsrp_3gpp_kernel</div>
+      <pre><span class="cmt"># Map axes to thread dims: x=cell, y=UE,
+# and tile the cycle axis across grid.z</span>
+tpb    = (<span class="num">16</span>, <span class="num">16</span>)            <span class="cmt"># 256 threads/block</span>
+blocks = (
+    (n_cells   + <span class="num">15</span>) // <span class="num">16</span>,    <span class="cmt"># ⌈cells/16⌉</span>
+    (n_ue      + <span class="num">15</span>) // <span class="num">16</span>,    <span class="cmt"># ⌈UE/16⌉</span>
+    n_cycles)                  <span class="cmt"># one block-layer per cycle</span>
+
+rsrp_3gpp_kernel[blocks, tpb](d_pos, d_cell, d_rsrp, ...)
+
+<span class="cmt"># inside the kernel:</span>
+ci, ui = cuda.grid(<span class="num">2</span>)
+c      = cuda.blockIdx.z
+<span class="kw">if</span> ci >= n_cells <span class="kw">or</span> ui >= n_ue: <span class="kw">return</span></pre>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>CuPy shortcut:</strong> high-level CuPy ops (<code>cp.matmul</code>, broadcasting, <code>cp.sum</code>) pick the grid for you — you only size grids by hand for custom <code>@cuda.jit</code> / <code>RawKernel</code> kernels. Write the explicit grid only where you wrote the explicit kernel.
+  </div>
+
+  <div class="callout warn">
+    <strong>Three sizing traps:</strong>
+    <strong>(1)</strong> TPB must be a multiple of 32 — a partial warp wastes lanes.
+    <strong>(2)</strong> Each grid dimension caps at 2³¹−1 blocks; if N is huge, use a grid-stride loop instead of one thread per item.
+    <strong>(3)</strong> Too <em>few</em> blocks under-fills the SMs — the city handover (3 blocks on 188 SMs) is the textbook case, and exactly why it dominates the profile despite the GPU being mostly idle.
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════ SECTION 8: BENCHMARK ═══════════════════ -->
+<div class="page" id="benchmark">
+<div class="section animate-in">
+  <div class="section-num">Section 08</div>
   <h2>Benchmarking — Measuring What Matters</h2>
   <p class="lead">A benchmark isn't just timing. It validates correctness, quantifies improvement, and finds your next bottleneck.</p>
 
