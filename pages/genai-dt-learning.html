@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to build a Generative-AI Digital Twin — a learning path — RF-Instrument Study Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0a0d11;
+    --panel:#10151c;
+    --panel-2:#161d26;
+    --grid:#19222d;
+    --grid-bright:#26333f;
+    --ink:#dde7ee;
+    --ink-dim:#8a98a6;
+    --ink-faint:#5d6776;
+    --trace:#4fe9c8;        /* phosphor teal — the live signal / structure */
+    --trace-deep:#1f9d86;
+    --amber:#ffb454;        /* reference / physics rail */
+    --latent:#b08bff;       /* latent / learned */
+    --hot:#ff5d63;          /* cost / gap — used sparingly */
+    --blue:#5aa2ff;
+    --hair:1px;
+    --r:10px;
+    --maxw:940px;
+  }
+  *{box-sizing:border-box}
+  html{ -webkit-text-size-adjust:100%; scroll-behavior:smooth; }
+  body{
+    margin:0; background:var(--void); color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;
+    font-size:16px; line-height:1.62; letter-spacing:.1px;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(1200px 600px at 50% -10%, rgba(79,233,200,.05), transparent 60%),
+      linear-gradient(rgba(255,255,255,.012) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.012) 1px, transparent 1px);
+    background-size:auto, 40px 40px, 40px 40px;
+  }
+  ::selection{ background:rgba(79,233,200,.28); color:#eafffa; }
+
+  a{ color:var(--trace); text-decoration:none; border-bottom:1px solid rgba(79,233,200,.3); }
+  a:hover{ border-color:var(--trace); }
+
+  .mono{ font-family:"IBM Plex Mono",ui-monospace,monospace; }
+  .hud{ font-family:"Chakra Petch",sans-serif; }
+
+  .wrap{ max-width:var(--maxw); margin:0 auto; padding:0 20px; }
+
+  /* ---------- header bezel ---------- */
+  header.bezel{
+    position:sticky; top:0; z-index:50;
+    background:linear-gradient(180deg, rgba(11,15,20,.96), rgba(11,15,20,.86));
+    border-bottom:var(--hair) solid var(--grid-bright);
+    backdrop-filter:blur(8px);
+  }
+  .bezel-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 20px; max-width:var(--maxw); margin:0 auto; }
+  .mark{ display:flex; align-items:center; gap:11px; min-width:0; }
+  .mark svg{ display:block; flex:none; }
+  .mark .t1{ font-family:"Chakra Petch"; font-weight:700; font-size:14px; letter-spacing:1.5px; color:var(--ink); white-space:nowrap; }
+  .mark .t2{ font-family:"IBM Plex Mono"; font-size:10.5px; letter-spacing:1.2px; color:var(--ink-faint); text-transform:uppercase; white-space:nowrap; }
+  .statbar{ display:flex; align-items:center; gap:14px; font-family:"IBM Plex Mono"; font-size:11px; color:var(--ink-dim); }
+  .statbar .seg{ display:flex; flex-direction:column; line-height:1.2; text-align:right; }
+  .statbar .k{ font-size:8.5px; letter-spacing:1.3px; color:var(--ink-faint); text-transform:uppercase; }
+  .statbar .v{ color:var(--trace); font-weight:500; }
+  .live{ display:flex; align-items:center; gap:6px; color:var(--ink-dim); font-size:10.5px; letter-spacing:1.3px; text-transform:uppercase; }
+  .dot{ width:7px; height:7px; border-radius:50%; background:var(--trace); box-shadow:0 0 8px var(--trace); animation:pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.25} }
+  .hide-sm{ }
+  @media (max-width:620px){ .hide-sm{ display:none } .statbar{ gap:10px } }
+
+  /* ---------- hero ---------- */
+  .hero{ padding:46px 0 30px; }
+  .eyebrow{ font-family:"Chakra Petch"; font-weight:600; font-size:11.5px; letter-spacing:3px; text-transform:uppercase; color:var(--trace-deep); display:flex; align-items:center; gap:10px; }
+  .eyebrow::before{ content:""; width:26px; height:1px; background:var(--trace-deep); display:inline-block; }
+  h1{ font-family:"IBM Plex Sans"; font-weight:700; font-size:clamp(31px,6.4vw,52px); line-height:1.04; letter-spacing:-.6px; margin:16px 0 0; }
+  h1 .lo{ color:var(--ink-dim); font-weight:600; }
+  .lede{ font-size:clamp(16px,2.4vw,18.5px); color:var(--ink-dim); max-width:680px; margin:18px 0 0; }
+  .lede b{ color:var(--ink); font-weight:600; }
+
+  /* learning-path chip rail (TOC) */
+  .pathrail{ display:flex; flex-wrap:wrap; gap:8px; margin:26px 0 6px; }
+  .pathrail a{ border:none; }
+  .prung{ display:inline-flex; align-items:center; gap:7px; font-family:"IBM Plex Mono"; font-size:11px; letter-spacing:.4px;
+    color:var(--ink-dim); background:var(--panel); border:var(--hair) solid var(--grid-bright); border-radius:30px; padding:6px 13px; transition:.15s; }
+  .prung:hover{ border-color:var(--trace-deep); color:var(--ink); }
+  .prung .n{ font-family:"Chakra Petch"; font-weight:700; font-size:10px; color:var(--trace); letter-spacing:1px; }
+  .prung.amber .n{ color:var(--amber); } .prung.violet .n{ color:var(--latent); }
+
+  /* scope (signature) */
+  .scope{
+    position:relative; margin:30px 0 6px; border:var(--hair) solid var(--grid-bright);
+    border-radius:var(--r); overflow:hidden; aspect-ratio:16/9; background:#070a0d;
+    box-shadow:0 0 0 1px rgba(0,0,0,.4) inset, 0 24px 60px -30px rgba(0,0,0,.9);
+  }
+  .scope svg.heroSvg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .scope .scan{ position:absolute; inset:0; pointer-events:none; mix-blend-mode:overlay; opacity:.5;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.0) 0 2px, rgba(0,0,0,.22) 2px 3px); }
+  .scope .vig{ position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(120% 120% at 50% 50%, transparent 58%, rgba(0,0,0,.55) 100%); }
+  .readout{ position:absolute; font-family:"IBM Plex Mono"; font-size:11px; letter-spacing:.4px; color:rgba(180,255,240,.82); text-shadow:0 0 10px rgba(0,0,0,.8); pointer-events:none; }
+  .readout .lk{ color:rgba(124,210,190,.75); }
+  .ro-tl{ top:10px; left:12px; } .ro-tr{ top:10px; right:12px; text-align:right; }
+  .ro-bl{ bottom:10px; left:12px; } .ro-br{ bottom:10px; right:12px; text-align:right; }
+  @media (max-width:520px){ .readout{ font-size:9.5px } }
+
+  .caption{ font-family:"IBM Plex Mono"; font-size:11.5px; color:var(--ink-faint); letter-spacing:.3px; margin:12px 2px 0; display:flex; gap:8px; }
+  .caption::before{ content:"//"; color:var(--trace-deep); }
+
+  /* ---------- channels ---------- */
+  .channel{ padding:40px 0; border-top:var(--hair) solid var(--grid); }
+  .chead{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:8px; }
+  .chid{ font-family:"Chakra Petch"; font-weight:700; font-size:12px; letter-spacing:2px; color:var(--void); background:var(--trace); padding:3px 9px; border-radius:4px; }
+  .chid.amber{ background:var(--amber); } .chid.violet{ background:var(--latent); } .chid.hot{ background:var(--hot); color:#180a0b; }
+  .ckicker{ font-family:"Chakra Petch"; font-weight:600; font-size:11.5px; letter-spacing:2.4px; text-transform:uppercase; color:var(--ink-faint); }
+  h2{ font-family:"IBM Plex Sans"; font-weight:600; font-size:clamp(22px,3.6vw,29px); line-height:1.18; letter-spacing:-.3px; margin:6px 0 14px; }
+  h3{ font-family:"Chakra Petch"; font-weight:600; font-size:13px; letter-spacing:1.4px; text-transform:uppercase; color:var(--ink); margin:22px 0 8px; }
+  .channel p{ margin:0 0 14px; color:#c4cfd9; }
+  .channel p .em{ color:var(--ink); font-weight:600; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start; }
+  @media (max-width:760px){ .grid2{ grid-template-columns:1fr } }
+
+  /* RF analogy rail */
+  .rf{ border-left:2px solid var(--amber); background:linear-gradient(90deg, rgba(255,180,84,.07), transparent 80%);
+    padding:13px 16px; border-radius:0 8px 8px 0; margin:18px 0 4px; }
+  .rf .lab{ font-family:"Chakra Petch"; font-weight:600; font-size:10.5px; letter-spacing:2px; text-transform:uppercase; color:var(--amber); }
+  .rf p{ margin:5px 0 0; font-size:14.5px; color:#cdd6df; }
+  .rf p b{ color:#ffe6c2; font-weight:600; }
+
+  /* you-are-here (Bimo's stack) rail */
+  .you{ border-left:2px solid var(--latent); background:linear-gradient(90deg, rgba(176,139,255,.08), transparent 80%);
+    padding:13px 16px; border-radius:0 8px 8px 0; margin:18px 0 4px; }
+  .you .lab{ font-family:"Chakra Petch"; font-weight:600; font-size:10.5px; letter-spacing:2px; text-transform:uppercase; color:var(--latent); }
+  .you p{ margin:5px 0 0; font-size:14.5px; color:#d6cfe6; }
+  .you p b{ color:#ecdfff; font-weight:600; }
+
+  /* warning / correction rail */
+  .warn{ border-left:2px solid var(--hot); background:linear-gradient(90deg, rgba(255,93,99,.08), transparent 80%);
+    padding:13px 16px; border-radius:0 8px 8px 0; margin:18px 0 4px; }
+  .warn .lab{ font-family:"Chakra Petch"; font-weight:600; font-size:10.5px; letter-spacing:2px; text-transform:uppercase; color:var(--hot); }
+  .warn p{ margin:5px 0 0; font-size:14.5px; color:#e7cccd; }
+  .warn p b{ color:#ffd9da; font-weight:600; }
+
+  /* equation chip */
+  .eq{ font-family:"IBM Plex Mono"; font-size:14px; background:var(--panel); border:var(--hair) solid var(--grid-bright);
+    border-radius:8px; padding:12px 14px; color:#d8e6ef; overflow-x:auto; white-space:nowrap; margin:6px 0 14px; }
+  .eq .c{ color:var(--ink-faint); } .eq .t{ color:var(--trace); } .eq .a{ color:var(--amber); } .eq .v{ color:var(--latent); }
+
+  /* code block */
+  pre.code{ font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:12.5px; line-height:1.65; background:#070a0d;
+    border:var(--hair) solid var(--grid-bright); border-radius:var(--r); padding:15px 16px; overflow-x:auto; color:#bcd2cb; margin:8px 0 6px; }
+  pre.code .c{ color:var(--ink-faint); }      /* comment */
+  pre.code .k{ color:var(--latent); }          /* keyword */
+  pre.code .s{ color:var(--amber); }           /* string/value */
+  pre.code .f{ color:var(--trace); }           /* fn / type */
+
+  /* instrument module card */
+  .module{ background:var(--panel); border:var(--hair) solid var(--grid-bright); border-radius:var(--r); padding:16px; }
+  .module .mhead{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+  .module .mtitle{ font-family:"Chakra Petch"; font-weight:600; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--ink-dim); }
+  .vizbox{ position:relative; border:var(--hair) solid var(--grid-bright); border-radius:8px; overflow:hidden; background:#070a0d; }
+  .vizbox svg, .vizbox canvas{ display:block; width:100%; height:auto; }
+  .vizbox .vig{ position:absolute; inset:0; pointer-events:none; background:radial-gradient(120% 120% at 50% 50%, transparent 62%, rgba(0,0,0,.45) 100%); }
+
+  /* controls */
+  .ctrls{ margin-top:13px; display:flex; flex-direction:column; gap:12px; }
+  .rowlbl{ display:flex; align-items:center; justify-content:space-between; font-family:"IBM Plex Mono"; font-size:11px; color:var(--ink-faint); letter-spacing:.4px; }
+  .rowlbl b{ color:var(--trace); font-weight:500; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:3px;
+    background:linear-gradient(90deg,var(--trace-deep),var(--grid-bright)); outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+    background:var(--trace); border:2px solid #04221d; cursor:pointer; box-shadow:0 0 10px rgba(79,233,200,.6); }
+  input[type=range]::-moz-range-thumb{ width:16px; height:16px; border-radius:50%; background:var(--trace); border:2px solid #04221d; cursor:pointer; }
+  input[type=range]:focus-visible{ box-shadow:0 0 0 3px rgba(79,233,200,.3); }
+  .btnrow{ display:flex; gap:9px; flex-wrap:wrap; }
+  button.inst{ font-family:"Chakra Petch"; font-weight:600; font-size:11px; letter-spacing:1.6px; text-transform:uppercase;
+    color:var(--void); background:var(--trace); border:none; border-radius:6px; padding:8px 14px; cursor:pointer; }
+  button.inst:hover{ filter:brightness(1.08); }
+  button.inst.ghost{ background:transparent; color:var(--trace); border:1px solid var(--trace-deep); }
+  button.inst.ghost:hover{ background:rgba(79,233,200,.08); }
+  button.inst.ghost.on{ background:var(--trace); color:var(--void); }
+  button.inst:focus-visible{ outline:3px solid rgba(79,233,200,.35); outline-offset:2px; }
+  .gauge{ font-family:"IBM Plex Mono"; font-size:12px; display:flex; gap:16px; flex-wrap:wrap; }
+  .gauge .g{ display:flex; flex-direction:column; }
+  .gauge .gk{ font-size:8.5px; letter-spacing:1.4px; color:var(--ink-faint); text-transform:uppercase; }
+  .gauge .gv{ color:var(--trace); font-weight:500; font-size:15px; }
+  .gauge .gv.amber{ color:var(--amber); } .gauge .gv.hot{ color:var(--hot); } .gauge .gv.violet{ color:var(--latent); }
+
+  /* knowledge map */
+  .kmap{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:6px 0 4px; }
+  @media (max-width:680px){ .kmap{ grid-template-columns:1fr } }
+  .kcard{ background:var(--panel); border:var(--hair) solid var(--grid-bright); border-radius:var(--r); padding:14px 15px; }
+  .kcard .ktop{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:7px; }
+  .kcard .kt{ font-family:"Chakra Petch"; font-weight:600; font-size:13px; letter-spacing:.6px; color:var(--ink); }
+  .kcard p{ margin:0; font-size:13.5px; color:#b9c4ce; }
+  .kcard p b{ color:var(--ink); }
+  .badge{ font-family:"IBM Plex Mono"; font-size:9.5px; letter-spacing:1px; text-transform:uppercase; padding:3px 8px; border-radius:20px; white-space:nowrap; }
+  .badge.have{ color:#9af0d8; background:rgba(79,233,200,.12); border:1px solid var(--trace-deep); }
+  .badge.partial{ color:#ffd79a; background:rgba(255,180,84,.12); border:1px solid rgba(255,180,84,.4); }
+  .badge.new{ color:#d3bcff; background:rgba(176,139,255,.14); border:1px solid rgba(176,139,255,.45); }
+
+  /* step ladder recap */
+  .ladder{ display:flex; flex-direction:column; gap:0; border:var(--hair) solid var(--grid-bright); border-radius:var(--r); overflow:hidden; }
+  .rung{ display:grid; grid-template-columns:64px 1fr; gap:0; border-bottom:var(--hair) solid var(--grid); }
+  .rung:last-child{ border-bottom:none; }
+  .rung .rk{ display:flex; align-items:center; justify-content:center; font-family:"Chakra Petch"; font-weight:700; font-size:13px; letter-spacing:.5px; background:var(--panel); color:var(--trace); }
+  .rung.v05 .rk{ color:var(--latent); } .rung.v1 .rk{ color:var(--amber); } .rung.pre .rk{ color:var(--ink-dim); }
+  .rung .rb{ padding:12px 15px; }
+  .rung .rb .rt{ font-family:"IBM Plex Sans"; font-weight:600; font-size:14.5px; color:var(--ink); }
+  .rung .rb .rd{ font-size:13px; color:#aab6c0; margin-top:3px; }
+  .rung .rb .rd code{ font-family:"IBM Plex Mono"; font-size:11.5px; color:var(--trace); background:rgba(79,233,200,.08); padding:1px 5px; border-radius:4px; }
+
+  /* legend */
+  .legend{ display:flex; flex-wrap:wrap; gap:14px; font-family:"IBM Plex Mono"; font-size:11px; color:var(--ink-dim); margin-top:11px; }
+  .legend .li{ display:flex; align-items:center; gap:6px; }
+  .legend .sw{ width:11px; height:11px; border-radius:3px; flex:none; }
+  .legend .sw.dot{ border-radius:50%; }
+
+  /* table */
+  .tablewrap{ overflow-x:auto; border:var(--hair) solid var(--grid-bright); border-radius:var(--r); margin:8px 0 4px; }
+  table{ border-collapse:collapse; width:100%; min-width:560px; font-size:13.5px; }
+  th,td{ text-align:left; padding:11px 14px; border-bottom:var(--hair) solid var(--grid); vertical-align:top; }
+  thead th{ font-family:"Chakra Petch"; font-weight:600; font-size:10.5px; letter-spacing:1.4px; text-transform:uppercase; color:var(--ink-faint); background:var(--panel); }
+  thead th.dif{ color:var(--trace); } thead th.ssm{ color:var(--latent); }
+  td:first-child{ font-family:"IBM Plex Mono"; font-size:11.5px; color:var(--ink-dim); white-space:nowrap; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover{ background:rgba(255,255,255,.018); }
+
+  /* decoder ring */
+  .ring{ display:grid; grid-template-columns:1fr 1fr; gap:0; border:var(--hair) solid var(--grid-bright); border-radius:var(--r); overflow:hidden; }
+  .ring .rf-c,.ring .ml-c{ padding:11px 14px; border-bottom:var(--hair) solid var(--grid); font-size:13.5px; }
+  .ring .rf-c{ border-right:var(--hair) solid var(--grid); color:#ffe0bd; font-family:"IBM Plex Mono"; font-size:12px; }
+  .ring .ml-c{ color:#bfe9de; }
+  .ring .hd{ font-family:"Chakra Petch"; font-weight:600; font-size:10.5px; letter-spacing:1.6px; text-transform:uppercase; background:var(--panel); }
+  .ring .hd.a{ color:var(--amber); } .ring .hd.t{ color:var(--trace); }
+
+  /* cross-link card */
+  .xlink{ display:flex; align-items:center; gap:14px; background:linear-gradient(90deg, rgba(79,233,200,.06), transparent 70%);
+    border:var(--hair) solid var(--grid-bright); border-left:2px solid var(--trace); border-radius:0 var(--r) var(--r) 0; padding:15px 16px; margin:8px 0 4px; }
+  .xlink .xi{ font-size:22px; flex:none; }
+  .xlink .xt{ font-size:14px; color:#c4cfd9; }
+  .xlink .xt b{ color:var(--ink); }
+  .xlink a{ font-family:"Chakra Petch"; font-weight:600; letter-spacing:.5px; }
+
+  /* footer */
+  footer{ border-top:var(--hair) solid var(--grid-bright); margin-top:30px; padding:30px 0 60px; color:var(--ink-faint); }
+  footer .cap{ font-family:"IBM Plex Mono"; font-size:11px; letter-spacing:.4px; }
+  footer .refs{ font-size:12.5px; color:var(--ink-dim); margin-top:14px; }
+  footer .refs b{ color:var(--ink); font-weight:600; }
+
+  .note-rm{ display:none; font-family:"IBM Plex Mono"; font-size:11px; color:var(--ink-faint); margin-top:8px; }
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    .dot{ animation:none }
+    .note-rm{ display:block }
+  }
+
+  /* svg shared graph classes */
+  .gnode-cell{ fill:rgba(79,233,200,.14); stroke:var(--trace); stroke-width:1.5; }
+  .gnode-ue{ fill:rgba(176,139,255,.18); stroke:var(--latent); stroke-width:1.3; }
+  .gedge{ stroke:var(--grid-bright); stroke-width:1.3; fill:none; }
+  .gedge.serve{ stroke:var(--trace-deep); }
+  .gedge.intf{ stroke:rgba(255,93,99,.45); stroke-dasharray:3 4; }
+  .glabel{ font-family:"IBM Plex Mono"; font-size:8px; fill:var(--ink-faint); }
+</style>
+</head>
+<body>
+
+<header class="bezel">
+  <div class="bezel-row">
+    <div class="mark">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+        <rect x="1" y="1" width="24" height="24" rx="5" stroke="#26333f"/>
+        <circle cx="7" cy="8" r="2.1" fill="#4fe9c8"/>
+        <circle cx="19" cy="7" r="2.1" fill="#4fe9c8"/>
+        <circle cx="13" cy="18" r="1.6" fill="#b08bff"/>
+        <path d="M7 8 L19 7 M7 8 L13 18 M19 7 L13 18" stroke="#1f9d86" stroke-width="1.1"/>
+      </svg>
+      <div>
+        <div class="t1">GEN-AI&nbsp;·&nbsp;DIGITAL&nbsp;TWIN</div>
+        <div class="t2">study bench · the learning path</div>
+      </div>
+    </div>
+    <div class="statbar">
+      <div class="live"><span class="dot"></span><span class="hide-sm">path</span></div>
+      <div class="seg hide-sm"><span class="k">rung</span><span class="v mono" id="hdRung">v0</span></div>
+      <div class="seg"><span class="k">steps</span><span class="v mono">3 + bg</span></div>
+      <div class="seg"><span class="k">start</span><span class="v mono">v0</span></div>
+    </div>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <!-- ================= HERO ================= -->
+  <section class="hero">
+    <div class="eyebrow">Study module · from confused to a first concrete step</div>
+    <h1>Build a generative-AI digital twin<br><span class="lo">one rung at a time</span></h1>
+    <p class="lede">You're not building "an AI." You're building a <b>fast generative stand-in</b> for an expensive stochastic RAN simulator — a model that, given a city's geometry and config, emits the same <b>per-cell / per-UE / per-TTI KPI distributions</b> the simulator would, only in milliseconds. This page is the ladder: the <b>background you actually need</b>, the <b>one thing to build first</b>, and the three rungs after it. Everything is mapped to the RF you already know.</p>
+
+    <nav class="pathrail" aria-label="learning path">
+      <a href="#s00"><span class="prung"><span class="n">00</span> mental model</span></a>
+      <a href="#s01"><span class="prung"><span class="n">BG</span> background</span></a>
+      <a href="#s02"><span class="prung"><span class="n">02</span> graph ≠ image</span></a>
+      <a href="#s03"><span class="prung"><span class="n">03</span> message passing</span></a>
+      <a href="#s04"><span class="prung"><span class="n">04</span> distribution ≠ number</span></a>
+      <a href="#s05"><span class="prung"><span class="n">v0</span> first step</span></a>
+      <a href="#s06"><span class="prung violet"><span class="n">v0.5</span> + latent</span></a>
+      <a href="#s07"><span class="prung amber"><span class="n">v1</span> + time</span></a>
+      <a href="#s09"><span class="prung"><span class="n">EVAL</span> does it work?</span></a>
+    </nav>
+
+    <div class="scope" id="scope">
+      <svg class="heroSvg" id="heroSvg" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" aria-label="A graph of cell and UE nodes, each emitting a live KPI distribution that breathes and resamples"></svg>
+      <div class="scan"></div><div class="vig"></div>
+      <div class="readout ro-tl"><span class="lk">OBJECT</span> hetero graph<br><span class="lk">nodes</span> cells + UEs</div>
+      <div class="readout ro-tr"><span class="lk">OUTPUT</span> per-node<br><span class="lk">type</span> distribution</div>
+      <div class="readout ro-bl"><span class="lk">edges</span> <span id="roEdges">serve · interfere</span></div>
+      <div class="readout ro-br"><span class="lk">resample</span> <span id="roDraw">000</span></div>
+    </div>
+    <div class="caption">the object you are modelling — typed nodes on a graph, each emitting a KPI <i>distribution</i> (whisker = p10–p90, tick = median), resampled like a Monte-Carlo run</div>
+  </section>
+
+  <!-- ================= S00 MENTAL MODEL ================= -->
+  <section class="channel" id="s00">
+    <div class="chead"><span class="chid">00</span><span class="ckicker">orient before you build</span></div>
+    <h2>What the thing actually is — in one breath</h2>
+    <p>Your in-house simulator is a <span class="em">traditional stochastic system-level simulator</span> — Monte-Carlo fading, scheduler logic, traffic processes. No ML inside. It is slow, but it is your <span class="em">teacher and oracle</span>. The job is to train a generative model that learns to <span class="em">sample like the simulator</span>: feed it the same scene, and it should produce KPI samples drawn from the same distribution — fast enough to run a city or a long sweep.</p>
+    <p>Three properties decide every design choice downstream. The output is <span class="em">graph-shaped</span> (per cell, per UE — typed nodes, not pixels). It is <span class="em">stochastic</span> (per-TTI KPIs scatter — so you predict a distribution, never a single number). And it is <span class="em">temporal</span> (it evolves TTI by TTI). Hold those three and the rest of this page is just "add one property at a time."</p>
+    <div class="warn"><div class="lab">first correction</div><p>The teacher is a <b>trusted reference with a known error budget</b> (≈ ±3&nbsp;dB), <b>not "ground truth."</b> You grade the surrogate on <b>fidelity to the simulator's own distribution</b>, not on bit-for-bit equality — stochastic output has no single right answer to match.</p></div>
+    <div class="you"><div class="lab">your stack</div><p>This is the <b>batch-mode, open-loop</b> generator first: scene in → KPI distribution out, config fixed. <b>Non-batch / config-injection</b> (the action-conditioned, closed-loop version) is the same model with a conditioning input added later — don't start there.</p></div>
+  </section>
+
+  <!-- ================= S01 BACKGROUND ================= -->
+  <section class="channel" id="s01">
+    <div class="chead"><span class="chid">BG</span><span class="ckicker">the background you actually need</span></div>
+    <h2>What you already have vs. what's genuinely new</h2>
+    <p>You are not starting from zero — most of the math is RF math wearing different notation. The honest list of prerequisites is short, and only two items are truly new to a wireless engineer. Learn them <span class="em">in this order</span>; each rung of the build needs only the boxes above it.</p>
+    <div class="kmap">
+      <div class="kcard">
+        <div class="ktop"><span class="kt">Probability &amp; distributions</span><span class="badge have">you have it</span></div>
+        <p>Gaussians, sampling, expectation, Monte-Carlo. You run fading realisations for a living — this <b>is</b> distributional thinking. Reuse it directly.</p>
+      </div>
+      <div class="kcard">
+        <div class="ktop"><span class="kt">Linear algebra &amp; DSP</span><span class="badge have">you have it</span></div>
+        <p>Vectors, matrices, convolution, transforms. Embeddings are just feature vectors; a layer is a matrix multiply plus a nonlinearity.</p>
+      </div>
+      <div class="kcard">
+        <div class="ktop"><span class="kt">Training loop &amp; autograd</span><span class="badge partial">brush up</span></div>
+        <p>PyTorch tensors, a forward pass, a <b>loss</b>, <code class="mono">loss.backward()</code>, an optimizer step. Conceptually: gradient descent on an error surface. One afternoon to get fluent.</p>
+      </div>
+      <div class="kcard">
+        <div class="ktop"><span class="kt">Graphs &amp; message passing</span><span class="badge new">new — core</span></div>
+        <p>Nodes, edges, neighbourhoods; how a GNN updates a node from its neighbours. This is the genuinely new mechanic. PyTorch Geometric + <code class="mono">HeteroData</code>. <a href="#s03">§03</a> teaches it visually.</p>
+      </div>
+      <div class="kcard">
+        <div class="ktop"><span class="kt">Distributional output</span><span class="badge partial">small reframe</span></div>
+        <p>Quantile regression + <b>pinball loss</b> → calibrated bands. You already think in percentiles; this just makes the network emit them. <a href="#s04">§04</a>.</p>
+      </div>
+      <div class="kcard">
+        <div class="ktop"><span class="kt">Latent-variable models</span><span class="badge new">new — for v0.5</span></div>
+        <p>VAE, the <b>ELBO</b> (reconstruction − KL), reparameterization. Needed only when you add the shared-shock latent. Defer until <a href="#s06">§06</a>.</p>
+      </div>
+    </div>
+    <div class="you"><div class="lab">your stack</div><p>Sequence models for time (the v1 rung) you <b>already know</b> from your closed-loop work — Mamba / S4 state-space recurrence. And diffusion / score models are an <b>advanced head</b>, not a prerequisite — they sit at the top of the ladder, covered on the companion page.</p></div>
+    <div class="rf"><div class="lab">RF read</div><p>Treat this like learning a new instrument, not a new physics. The quantities are familiar (power, interference, distributions); the only new "knob" is <b>how information moves over a graph</b> instead of over a grid or a time series.</p></div>
+  </section>
+
+  <!-- ================= S02 GRAPH NOT IMAGE ================= -->
+  <section class="channel" id="s02">
+    <div class="chead"><span class="chid">02</span><span class="ckicker">the reframe that fixes everything</span></div>
+    <h2>Your data is a graph, not an image</h2>
+    <div class="grid2">
+      <div>
+        <p>The tempting first instinct — "it's a coverage map, so use a U-Net / image model" — is <span class="em">wrong for this output</span>. A raster CNN assumes a dense, regular grid of pixels. But your KPIs live on <span class="em">irregular, typed entities</span>: cells and UEs, at arbitrary positions, with meaningful relationships — which cell serves which UE, which cells interfere, which are adjacent.</p>
+        <p>That structure <span class="em">is a graph</span>: cells and UEs are <span class="em">typed nodes</span>; serving / interference / adjacency are <span class="em">typed edges</span>. Modelling it as a graph keeps the relationships first-class instead of smearing them onto pixels. Toggle the bench to see the same scene as a raster (lossy) and as a graph (faithful).</p>
+        <div class="warn"><div class="lab">correction baked in</div><p>U-Net / image-to-image only applies if the output were a <b>dense coverage raster</b>. It is not — it's per-cell / per-UE values. So the backbone is a <b>heterogeneous GNN</b>, not a CNN. (RadioUNet-style raster models are a different problem.)</p></div>
+      </div>
+      <div class="module">
+        <div class="mhead"><span class="mtitle">Raster vs. graph — same scene</span><span class="mono" style="font-size:10px;color:var(--ink-faint)" id="rgState">graph</span></div>
+        <div class="vizbox"><svg id="rgSvg" viewBox="0 0 360 250" aria-label="A city scene shown as a pixel raster, then as a typed graph of cells and UEs"></svg><div class="vig"></div></div>
+        <div class="ctrls">
+          <div class="btnrow">
+            <button class="inst ghost on" id="rgGraph">Graph view</button>
+            <button class="inst ghost" id="rgRaster">Raster view</button>
+          </div>
+          <div class="legend">
+            <span class="li"><span class="sw dot" style="background:var(--trace)"></span>cell node</span>
+            <span class="li"><span class="sw dot" style="background:var(--latent)"></span>UE node</span>
+            <span class="li"><span class="sw" style="background:var(--trace-deep)"></span>serving edge</span>
+            <span class="li"><span class="sw" style="background:rgba(255,93,99,.6)"></span>interference</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= S03 MESSAGE PASSING ================= -->
+  <section class="channel" id="s03">
+    <div class="chead"><span class="chid">03</span><span class="ckicker">how a GNN actually computes</span></div>
+    <h2>Message passing — a node learns from its neighbours</h2>
+    <p>A graph neural network does one simple thing, repeated. Each round, every node <span class="em">gathers messages</span> from its neighbours, <span class="em">aggregates</span> them (sum / mean / attention), and <span class="em">updates</span> its own feature vector. After <i>K</i> rounds, a node's embedding has absorbed information from its <i>K-hop</i> neighbourhood. <span class="em">Heterogeneous</span> means the rules are type-aware: a "serving" edge and an "interference" edge use different learned weights (this is HGT / R-GCN; in code, <code class="mono">HGTConv</code> over a <code class="mono">HeteroData</code> object).</p>
+    <div class="module" style="margin:6px 0 4px">
+      <div class="mhead"><span class="mtitle">Message passing — watch information propagate</span><span class="mono" style="font-size:10px;color:var(--ink-faint)">hop <span id="mpHop">0</span> / 3</span></div>
+      <div class="vizbox"><svg id="mpSvg" viewBox="0 0 720 300" aria-label="Pulses travel along graph edges; each round, more nodes light up as information spreads K hops"></svg><div class="vig"></div></div>
+      <div class="ctrls">
+        <div class="btnrow">
+          <button class="inst" id="mpStep">▶ Propagate one hop</button>
+          <button class="inst ghost" id="mpReset">↺ reset</button>
+        </div>
+        <div class="rowlbl"><span>start from the highlighted cell — each hop, its influence spreads one ring outward</span></div>
+      </div>
+    </div>
+    <div class="rf"><div class="lab">RF read</div><p>This is <b>interference aggregation</b> made learnable. A cell's SINR depends on its neighbours' transmit state; message passing is exactly that "gather from neighbours, update my state" computation — except the aggregation rule is <b>learned from data</b> rather than fixed by a path-loss formula.</p></div>
+    <div class="you"><div class="lab">your stack</div><p>Take the <b>WirelessNet (HMPGNN)</b> design as a reference — typed nodes/edges, per-edge-type weight sharing, trained on system-level sims, generalising to unseen deployments. No public code exists, so you reimplement it in PyG. The one change: <b>swap its deterministic point head for a quantile head</b> (next section).</p></div>
+  </section>
+
+  <!-- ================= S04 DISTRIBUTION NOT NUMBER ================= -->
+  <section class="channel" id="s04">
+    <div class="chead"><span class="chid">04</span><span class="ckicker">stochastic output, done honestly</span></div>
+    <h2>Predict a distribution, not a number</h2>
+    <div class="grid2">
+      <div>
+        <p>Per-TTI KPIs scatter — run the simulator twice on the same scene and SINR lands differently each time (fast fading, scheduling churn). A model trained with plain MSE collapses all that scatter to its <span class="em">mean</span> and reports a single confident line. That line is <span class="em">sharp and wrong</span>: it throws away the spread that is the whole point of a stochastic twin.</p>
+        <p>Instead, emit <span class="em">quantiles</span> — say p10, p50, p90 — trained with the <span class="em">pinball (quantile) loss</span>. The band should <span class="em">cover</span> the truth at its stated rate: ~80% of real samples inside the p10–p90 band. Drag the bench: the point model ignores the cloud; the quantile band tracks it.</p>
+        <div class="you"><div class="lab">the mantra</div><p><b>"Build the sampler, grade the distribution."</b> The simulator is itself a sampler; your generator learns to sample like it; you score the two <i>distributions</i>, not individual values. So "give me samples" and "give me uncertainty" are the same ask — never a real choice.</p></div>
+      </div>
+      <div class="module">
+        <div class="mhead"><span class="mtitle">Point estimate vs. quantile band</span><span class="mono" style="font-size:10px;color:var(--ink-faint)" id="qState">quantiles</span></div>
+        <div class="vizbox"><canvas id="qCanvas" width="360" height="250"></canvas><div class="vig"></div></div>
+        <div class="ctrls">
+          <div class="btnrow">
+            <button class="inst ghost on" id="qBand">Quantile band</button>
+            <button class="inst ghost" id="qPoint">Point (MSE)</button>
+            <button class="inst" id="qResample">↺ resample truth</button>
+          </div>
+          <div class="gauge">
+            <div class="g"><span class="gk">target coverage</span><span class="gv">80%</span></div>
+            <div class="g"><span class="gk">empirical</span><span class="gv amber" id="qCov">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="rf"><div class="lab">RF read</div><p>You would never report a single fade value and call it the channel — you report the <b>distribution of fades</b>. Same here: the deliverable is the band and its coverage, not a point. A point estimate is a link budget with the margins deleted.</p></div>
+  </section>
+
+  <!-- ================= S05 v0 FIRST STEP ================= -->
+  <section class="channel" id="s05">
+    <div class="chead"><span class="chid">v0</span><span class="ckicker">step 1 · the thing to build first</span></div>
+    <h2>v0 — heterogeneous GNN with quantile heads</h2>
+    <p>This is your <span class="em">first concrete deliverable</span>, and you build it before anything else — no latent, no time. It gives correct <span class="em">marginals</span> (each node's own distribution) and, crucially, something you can <span class="em">trust and measure</span>. Make this solid; every later rung wraps around it.</p>
+    <svg class="flow" id="v0flow" viewBox="0 0 760 150" role="img" aria-label="v0 pipeline: HeteroData graph into a hetero-GNN encoder, into type-specific quantile heads, scored by pinball loss"></svg>
+    <p class="note-rm">Motion reduced: pipeline flow is static.</p>
+    <h3>The recipe, end to end</h3>
+    <pre class="code"><span class="c"># v0 — PyTorch Geometric skeleton (the first thing to build)</span>
+<span class="k">from</span> torch_geometric.data <span class="k">import</span> <span class="f">HeteroData</span>
+<span class="k">from</span> torch_geometric.nn <span class="k">import</span> <span class="f">HGTConv</span>
+
+g = <span class="f">HeteroData</span>()
+g[<span class="s">'cell'</span>].x = cell_feats   <span class="c"># RT + sim features per cell</span>
+g[<span class="s">'ue'</span>].x   = ue_feats     <span class="c"># per-UE features</span>
+g[<span class="s">'cell'</span>,<span class="s">'serves'</span>,<span class="s">'ue'</span>].edge_index   = serve_idx
+g[<span class="s">'cell'</span>,<span class="s">'interferes'</span>,<span class="s">'cell'</span>].edge_index = intf_idx
+
+<span class="c"># 2–3 type-aware message-passing layers → per-node embeddings h_i</span>
+h = <span class="f">HGTConv</span>(...)(g.x_dict, g.edge_index_dict)   <span class="c"># ×2–3</span>
+
+<span class="c"># type-specific heads — NOT one uniform head</span>
+rsrp_q = <span class="f">QuantileHead</span>(h[<span class="s">'ue'</span>])     <span class="c"># continuous → p10/p50/p90</span>
+sinr_q = <span class="f">QuantileHead</span>(h[<span class="s">'ue'</span>])     <span class="c"># continuous</span>
+ho     = <span class="f">EventHead</span>(h[<span class="s">'ue'</span>])        <span class="c"># handover = discrete event!</span>
+sched  = <span class="f">QuantileHead</span>(h[<span class="s">'cell'</span>])   <span class="c"># per-cell scheduler KPI</span>
+
+loss = <span class="f">pinball</span>(rsrp_q, y_rsrp) + <span class="f">pinball</span>(sinr_q, y_sinr) + <span class="f">bce</span>(ho, y_ho) + ...
+<span class="c"># eval on HELD-OUT DEPLOYMENTS, not just held-out samples</span></pre>
+    <div class="warn"><div class="lab">three things people get wrong here</div><p><b>(1)</b> Heads must be <b>type-appropriate</b> — RSRP/SINR/throughput are continuous regression, but <b>handover is a discrete event</b> (classification / point-process), not a number. <b>(2)</b> Use <b>quantile heads from day one</b> — do not inherit a deterministic point head. <b>(3)</b> Evaluate on <b>held-out deployments</b> (unseen cities/layouts), not just held-out samples from seen ones — that's the only test of generalisation.</p></div>
+    <div class="you"><div class="lab">your stack</div><p>Let <b>your data's schema drive the graph</b> — node types, edge types, and features come from your simulator's reports and your RT corpus, not from any paper. Useful reference collection: <span class="mono">jwwthu/GNN-Communication-Networks</span>. Track runs in Weights&nbsp;&amp;&nbsp;Biases from the start.</p></div>
+  </section>
+
+  <!-- ================= S06 v0.5 LATENT ================= -->
+  <section class="channel" id="s06">
+    <div class="chead"><span class="chid violet">v0.5</span><span class="ckicker">step 2 · cross-node correlation</span></div>
+    <h2>v0.5 — add a shared latent (this is a CVAE)</h2>
+    <div class="grid2">
+      <div>
+        <p>v0 gets each node's <span class="em">marginal</span> right, but treats nodes as independent given the graph. Reality couples them: a <span class="em">traffic surge</span> or a <span class="em">shared fading realisation</span> moves many nodes <span class="em">together</span>. To capture that joint structure, add a <span class="em">shared latent</span> <code class="mono">z</code> sampled once per scene and fed to every head — one draw, one coherent "shock" across the whole map.</p>
+        <p>Training a latent-variable model needs two networks: a <span class="em">prior</span> <code class="mono">p(z | graph)</code> and a <span class="em">train-only posterior</span> <code class="mono">q(z | graph, KPIs)</code>, optimised with the <span class="em">ELBO</span> = reconstruction − KL. Toggle the bench: without <code>z</code>, nodes twinkle independently; inject a latent shock and they swing in unison.</p>
+        <div class="warn"><div class="lab">your original sketch, corrected</div><p>Your <code class="mono">Graph → GNN → z → decode</code> sketch was essentially v0.5 — but <b>missing the posterior and the KL term</b>. A latent model cannot be trained from the generation path alone; you need <code class="mono">q(z|·)</code> and the ELBO to learn what <code>z</code> should mean.</p></div>
+      </div>
+      <div class="module">
+        <div class="mhead"><span class="mtitle">Independent nodes vs. shared shock</span><span class="mono" style="font-size:10px;color:var(--ink-faint)" id="zState">+ latent z</span></div>
+        <div class="vizbox"><canvas id="zCanvas" width="360" height="250"></canvas><div class="vig"></div></div>
+        <div class="ctrls">
+          <div class="btnrow">
+            <button class="inst ghost on" id="zOn">+ latent z (correlated)</button>
+            <button class="inst ghost" id="zOff">no latent (independent)</button>
+            <button class="inst" id="zShock">⚡ inject shock</button>
+          </div>
+          <div class="rowlbl"><span>each tile is a node's KPI — watch whether they move together or alone</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="rf"><div class="lab">RF read</div><p><code>z</code> is the <b>shared realisation</b> — the common cause that correlates a whole region: one traffic event, one weather front, one slow-fading draw. v0 can match the per-cell histograms but will never reproduce the <b>joint</b> pattern that <code>z</code> creates. Energy score (not per-node coverage) is what catches the difference.</p></div>
+  </section>
+
+  <!-- ================= S07 v1 TIME ================= -->
+  <section class="channel" id="s07">
+    <div class="chead"><span class="chid amber">v1</span><span class="ckicker">step 3 · per-TTI evolution</span></div>
+    <h2>v1 — add time (the per-TTI rung)</h2>
+    <p>Now unroll over time. Wrap v0.5 in a <span class="em">transition</span> <code class="mono">p(z_t | z_{t-1}, graph_t)</code> stepped TTI by TTI, while the graph itself <span class="em">evolves</span> — UEs move, attach, and detach. The latent carries state forward so the trajectory stays coherent instead of flickering frame to frame.</p>
+    <div class="module" style="margin:6px 0 4px">
+      <div class="mhead"><span class="mtitle">Rolling trajectory — graph evolves, latent carries state</span><span class="mono" style="font-size:10px;color:var(--ink-faint)">TTI <span id="tTTI">000</span></span></div>
+      <div class="vizbox"><canvas id="tCanvas" width="720" height="220"></canvas><div class="vig"></div></div>
+      <div class="ctrls">
+        <div class="btnrow">
+          <button class="inst" id="tPlay">▶ play rollout</button>
+          <button class="inst ghost" id="tStep">step</button>
+        </div>
+        <div class="rowlbl"><span>UEs drift and re-associate; each node's band is re-sampled per TTI but stays temporally smooth</span></div>
+      </div>
+    </div>
+    <div class="you"><div class="lab">the design fork that matters most</div><p>Bigger than which GNN flavour you pick: <b>literal per-TTI sample paths</b> vs. <b>per-TTI-resolution distributions</b> (a coarser latent rate). Most RAN use cases need <b>distributions</b>, not literal sub-ms paths — sequence length, compute, and error accumulation are brutal at true TTI granularity. Your two-timescale design (slow super-step + fast recurrence) is exactly the right shape here.</p></div>
+    <div class="rf"><div class="lab">RF read</div><p>Think <b>slow envelope over fast fading</b>: a diurnal / mobility trend riding on per-TTI fluctuation. v1 has to respect both rates, or you get maps that look right in a snapshot but jitter incoherently over time — the classic failure mode of deterministic per-frame models.</p></div>
+  </section>
+
+  <!-- ================= S08 DIFFUSION HEAD (cross-link) ================= -->
+  <section class="channel" id="s08">
+    <div class="chead"><span class="chid">+</span><span class="ckicker">the advanced generative head</span></div>
+    <h2>Where diffusion fits — later, not first</h2>
+    <p>Once v0→v1 is trustworthy, you can upgrade the <span class="em">head</span> that turns embeddings into a distribution. A simple quantile head is the floor; a <span class="em">diffusion / score-based head</span> is the expressive ceiling — it models rich, multimodal, spatially-correlated fields and gives calibrated ensembles for free. But it is an <span class="em">upgrade to a working backbone</span>, not the starting point. Build the graph + latent + time first; bolt on the generative head when the marginals and the joint structure already check out.</p>
+    <div class="xlink">
+      <span class="xi">↗</span>
+      <span class="xt"><b>Companion module:</b> the full diffusion + surrogate-foundation deep-dive — forward/reverse process, conditioning, ensembles, and pretrain-then-calibrate. <a href="spatiotemporal_diffusion_surrogate.html">Open “Spatiotemporal diffusion &amp; the surrogate foundation model” →</a></span>
+    </div>
+    <div class="you"><div class="lab">your stack</div><p>In your framing the diffusion head is the <b>spatial emission / innovation generator</b> feeding the physics-structured head Φ, and the SSM remains the fast per-TTI controller. The <b>batch vs non-batch</b> axis maps to <b>unconditional vs guided</b> sampling. None of that changes the first three rungs.</p></div>
+  </section>
+
+  <!-- ================= S09 EVALUATION ================= -->
+  <section class="channel" id="s09">
+    <div class="chead"><span class="chid hot">EVAL</span><span class="ckicker">how you know it works</span></div>
+    <h2>You grade the distribution, not the value</h2>
+    <div class="grid2">
+      <div>
+        <p>Stochastic output rules out bit-for-bit parity — there is no single correct sample to match. So you test <span class="em">distributionally</span>. The first question is <span class="em">calibration / coverage</span>: does the truth land inside the stated band at the stated rate? Plot nominal vs. empirical coverage — a calibrated model sits on the diagonal. Then add <span class="em">sharpness</span> (narrow bands are better, but only if still covered) and joint scores: <span class="em">energy score</span> / <span class="em">CRPS</span>, plus <span class="em">spread–skill</span> for ensembles.</p>
+        <p>The bar is <span class="em">calibrated-and-sharp</span>. Sharp-but-miscalibrated is the seductive trap — confident, narrow, and wrong. And remember the floor: the oracle carries a <span class="em">±3&nbsp;dB error budget</span>, so no derived metric can claim more precision than the teacher has.</p>
+      </div>
+      <div class="module">
+        <div class="mhead"><span class="mtitle">Reliability — empirical vs. nominal coverage</span><span class="mono" style="font-size:10px;color:var(--ink-faint)" id="relState">calibrated</span></div>
+        <div class="vizbox"><canvas id="relCanvas" width="360" height="280"></canvas><div class="vig"></div></div>
+        <div class="ctrls">
+          <div class="btnrow">
+            <button class="inst ghost on" id="relCal">calibrated</button>
+            <button class="inst ghost" id="relOver">over-confident</button>
+            <button class="inst ghost" id="relUnder">under-confident</button>
+          </div>
+          <div class="rowlbl"><span>on the diagonal = honest; below = bands too narrow (over-confident)</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="you"><div class="lab">your stack</div><p>Your existing parity rig carries straight over: <b>bitwise parity</b> for behaviour-neutral refactors, <b>TOST equivalence</b> for behavioural changes, <b>common random numbers</b> for paired stochastic comparisons. For the generative side, add <b>CRPS + spread–skill</b>. Same discipline — applied to distributions.</p></div>
+  </section>
+
+  <!-- ================= S10 RECAP ================= -->
+  <section class="channel" id="s10">
+    <div class="chead"><span class="chid">PATH</span><span class="ckicker">the whole ladder in one view</span></div>
+    <h2>From here to a working twin</h2>
+    <div class="ladder">
+      <div class="rung pre">
+        <div class="rk">BG</div>
+        <div class="rb"><div class="rt">Background</div><div class="rd">PyTorch training loop · <b>graphs &amp; message passing</b> · quantile/pinball. Defer latent-variable models &amp; sequence models until you need them.</div></div>
+      </div>
+      <div class="rung">
+        <div class="rk">v0</div>
+        <div class="rb"><div class="rt">Build first · hetero-GNN + quantile heads</div><div class="rd"><code>HeteroData</code> → <code>HGTConv</code> ×2–3 → type-specific quantile heads → pinball loss → <b>held-out-deployment</b> eval. Correct marginals; trustworthy.</div></div>
+      </div>
+      <div class="rung v05">
+        <div class="rk">v0.5</div>
+        <div class="rb"><div class="rt">Add shared latent · CVAE</div><div class="rd">prior <code>p(z|graph)</code> + posterior <code>q(z|graph,KPIs)</code>, trained by the <b>ELBO</b>. Captures cross-node correlation v0 can't.</div></div>
+      </div>
+      <div class="rung v1">
+        <div class="rk">v1</div>
+        <div class="rb"><div class="rt">Add time · per-TTI recurrence</div><div class="rd">transition <code>p(z_t | z_{t-1}, graph_t)</code>, evolving graph. Choose distributions over literal per-TTI paths.</div></div>
+      </div>
+      <div class="rung">
+        <div class="rk">+</div>
+        <div class="rb"><div class="rt">Advanced head &amp; conditioning</div><div class="rd">diffusion generative head; config-injection / guidance for non-batch mode. Upgrade a working backbone — never the start.</div></div>
+      </div>
+    </div>
+    <h3>What to do this week</h3>
+    <p>Don't try to see the whole system at once. <span class="em">Get a PyTorch training loop running</span>, then <span class="em">build the v0 <code class="mono">HeteroData</code> skeleton</span> on a tiny slice of your simulator's reports — even two node types and one edge type. Make a quantile head emit p10/p50/p90 for one KPI and check coverage on held-out deployments. That single loop, working and measured, is the foundation the entire ladder stands on.</p>
+    <div class="you"><div class="lab">offered next</div><p>If useful, the natural follow-ups are a concrete <b>PyG <code class="mono">HeteroData</code> v0 code skeleton</b> (real node/edge stubs + HGTConv + pinball head) and a <b>one-page PhD-proposal spine</b> aligning the build to the distributional-fidelity thesis.</p></div>
+  </section>
+
+  <!-- ================= DECODER RING ================= -->
+  <section class="channel" id="ring">
+    <div class="chead"><span class="chid amber">REF</span><span class="ckicker">decoder ring · RF ⇄ what to learn</span></div>
+    <h2>The same idea in two vocabularies</h2>
+    <div class="ring">
+      <div class="hd a rf-c">RF / wireless you know</div><div class="hd t ml-c">GenAI-twin concept</div>
+      <div class="rf-c">cells, UEs, serving/interference</div><div class="ml-c">typed nodes + typed edges (graph)</div>
+      <div class="rf-c">interference aggregation</div><div class="ml-c">message passing / neighbour update</div>
+      <div class="rf-c">Monte-Carlo fading distribution</div><div class="ml-c">predicted KPI distribution</div>
+      <div class="rf-c">percentiles / margins</div><div class="ml-c">quantile heads + pinball loss</div>
+      <div class="rf-c">shared fading / traffic event</div><div class="ml-c">latent z (shared shock, CVAE)</div>
+      <div class="rf-c">slow envelope over fast fading</div><div class="ml-c">temporal transition p(z_t|z_{t-1})</div>
+      <div class="rf-c">path-loss calibration</div><div class="ml-c">fine-tune / LoRA adapter</div>
+      <div class="rf-c">link-budget margin check</div><div class="ml-c">coverage / calibration test</div>
+      <div class="rf-c">trusted reference ±3 dB</div><div class="ml-c">oracle (not "ground truth")</div>
+      <div class="rf-c">behavioral PA / channel model</div><div class="ml-c">surrogate of the simulator</div>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cap">// study bench · vanilla HTML/CSS/JS · zero dependencies beyond Google Fonts · animations respect prefers-reduced-motion</div>
+    <div class="refs">
+      <b>Anchored to your notes (genai-dt.md):</b> the v0→v0.5→v1 build ladder; heterogeneous GNN + quantile heads as the first rung (WirelessNet/HMPGNN reference design, no public code — reimplement in PyTorch Geometric, swap the point head for a quantile head); CVAE latent with prior + posterior trained by the ELBO; per-TTI temporal recurrence; "build the sampler, grade the distribution"; oracle as a trusted reference with a ±3 dB error budget, not ground truth. Diffusion is an advanced head — see the companion module. Figures and meters are illustrative.
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  const RM = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const SVGNS = "http://www.w3.org/2000/svg";
+
+  /* ---------- small seeded PRNG ---------- */
+  function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  function gauss(rng){ let u=0,v=0; while(u===0)u=rng(); while(v===0)v=rng(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+  function clamp(v,a,b){ return v<a?a:v>b?b:v; }
+  function el(tag,attrs){ const e=document.createElementNS(SVGNS,tag); if(attrs) for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+  /* run fn when element scrolls into view (once) */
+  function onVisible(node,fn,thr){
+    if(!node) return;
+    if(!("IntersectionObserver" in window)){ fn(); return; }
+    const io=new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting){ fn(); io.disconnect(); } }); },{threshold:thr||0.3});
+    io.observe(node);
+  }
+
+  /* ===================== HERO — typed graph w/ breathing distributions ===================== */
+  (function(){
+    const svg=document.getElementById("heroSvg"); if(!svg) return;
+    const roDraw=document.getElementById("roDraw");
+    const W=800,H=450;
+    // layout: cells (squares) + UEs (dots), seeded
+    const rng=mulberry32(40411);
+    const cells=[], ues=[];
+    const cellPos=[[170,150],[400,110],[620,170],[300,300],[560,320]];
+    cellPos.forEach((p,i)=>cells.push({x:p[0],y:p[1],i}));
+    for(let i=0;i<9;i++){ const c=cells[(rng()*cells.length)|0]; ues.push({x:c.x+gauss(rng)*55, y:c.y+gauss(rng)*48, serve:c.i}); }
+    // edges
+    const edges=[];
+    ues.forEach((u,j)=>edges.push({a:cells[u.serve], bx:u.x, by:u.y, kind:"serve"}));
+    edges.push({a:cells[0],b:cells[1],kind:"intf"});
+    edges.push({a:cells[1],b:cells[2],kind:"intf"});
+    edges.push({a:cells[1],b:cells[3],kind:"intf"});
+    edges.push({a:cells[3],b:cells[4],kind:"intf"});
+    edges.push({a:cells[2],b:cells[4],kind:"intf"});
+
+    // draw edges
+    edges.forEach(e=>{
+      const bx = e.b? e.b.x : e.bx, by = e.b? e.b.y : e.by;
+      const ln=el("line",{x1:e.a.x,y1:e.a.y,x2:bx,y2:by,class:"gedge "+(e.kind==="serve"?"serve":"intf")});
+      svg.appendChild(ln);
+    });
+
+    // whisker groups for cells; UE dots
+    const whisk=[];
+    cells.forEach(c=>{
+      const g=el("g",{}); svg.appendChild(g);
+      const sq=el("rect",{x:c.x-13,y:c.y-13,width:26,height:26,rx:6,class:"gnode-cell"}); g.appendChild(sq);
+      // distribution whisker to the right of node
+      const wx=c.x+26;
+      const line=el("line",{x1:wx,y1:c.y-20,x2:wx,y2:c.y+20,stroke:"#4fe9c8","stroke-width":2.4,"stroke-linecap":"round",opacity:.9}); g.appendChild(line);
+      const cap1=el("line",{x1:wx-5,y1:c.y-20,x2:wx+5,y2:c.y-20,stroke:"#7be9d4","stroke-width":1.6}); g.appendChild(cap1);
+      const cap2=el("line",{x1:wx-5,y1:c.y+20,x2:wx+5,y2:c.y+20,stroke:"#7be9d4","stroke-width":1.6}); g.appendChild(cap2);
+      const med=el("circle",{cx:wx,cy:c.y,r:3.2,fill:"#eafffa"}); g.appendChild(med);
+      whisk.push({wx,cy:c.y,line,cap1,cap2,med,phase:rng()*6.28});
+    });
+    ues.forEach(u=>{ svg.appendChild(el("circle",{cx:u.x,cy:u.y,r:4.5,class:"gnode-ue"})); });
+
+    let draws=0, t=0, last=0;
+    function frame(now){
+      const dt=Math.min(0.05,(now-(last||now))/1000); last=now; t+=dt;
+      whisk.forEach((w,i)=>{
+        const spread = 14 + 9*Math.abs(Math.sin(t*0.9 + w.phase)) + 5*Math.sin(t*2.3+w.phase*1.7);
+        const med = (Math.sin(t*0.6 + w.phase*0.5))*8;
+        w.line.setAttribute("y1", w.cy-spread); w.line.setAttribute("y2", w.cy+spread);
+        w.cap1.setAttribute("y1", w.cy-spread); w.cap1.setAttribute("y2", w.cy-spread);
+        w.cap2.setAttribute("y1", w.cy+spread); w.cap2.setAttribute("y2", w.cy+spread);
+        w.med.setAttribute("cy", w.cy+med);
+      });
+      if(Math.floor(t/2.4)!==draws){ draws=Math.floor(t/2.4); if(roDraw) roDraw.textContent=String(draws).padStart(3,"0"); }
+      requestAnimationFrame(frame);
+    }
+    if(RM){ /* static: render one frame */ whisk.forEach(w=>{ w.line.setAttribute("y1",w.cy-18); w.line.setAttribute("y2",w.cy+18); }); }
+    else requestAnimationFrame(frame);
+  })();
+
+  /* ===================== S02 — raster vs graph ===================== */
+  (function(){
+    const svg=document.getElementById("rgSvg"); if(!svg) return;
+    const bGraph=document.getElementById("rgGraph"), bRaster=document.getElementById("rgRaster"), state=document.getElementById("rgState");
+    const W=360,H=250;
+    const gGraph=el("g",{}), gRaster=el("g",{}); svg.appendChild(gRaster); svg.appendChild(gGraph);
+
+    // raster: heat grid
+    const rng=mulberry32(7);
+    const cols=18, rows=12, cw=W/cols, ch=H/rows;
+    const cx=[80,250,180], cy=[80,90,180], amp=[1,.9,.8];
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const x=c*cw+cw/2, y=r*ch+ch/2; let v=0;
+      for(let k=0;k<3;k++){ const dx=x-cx[k],dy=y-cy[k]; v+=amp[k]*Math.exp(-(dx*dx+dy*dy)/(2*52*52)); }
+      v=clamp(v,0,1);
+      const col=`rgba(${(20+v*60)|0},${(90+v*140)|0},${(80+v*120)|0},${0.25+v*0.7})`;
+      gRaster.appendChild(el("rect",{x:c*cw+1,y:r*ch+1,width:cw-2,height:ch-2,fill:col,rx:2}));
+    }
+    gRaster.appendChild(el("text",{x:10,y:H-10,class:"glabel",fill:"#5d6776"}));
+
+    // graph: cells + ues + edges over same hotspots
+    const cells=[{x:80,y:80},{x:250,y:90},{x:180,y:180}];
+    const ues=[]; const ueSeed=mulberry32(21);
+    cells.forEach((c,ci)=>{ for(let k=0;k<3;k++) ues.push({x:c.x+gauss(ueSeed)*34,y:c.y+gauss(ueSeed)*30,s:ci}); });
+    // interference edges between cells
+    [[0,1],[1,2],[0,2]].forEach(([a,b])=>gGraph.appendChild(el("line",{x1:cells[a].x,y1:cells[a].y,x2:cells[b].x,y2:cells[b].y,class:"gedge intf"})));
+    ues.forEach(u=>gGraph.appendChild(el("line",{x1:cells[u.s].x,y1:cells[u.s].y,x2:u.x,y2:u.y,class:"gedge serve"})));
+    cells.forEach(c=>gGraph.appendChild(el("rect",{x:c.x-11,y:c.y-11,width:22,height:22,rx:5,class:"gnode-cell"})));
+    ues.forEach(u=>gGraph.appendChild(el("circle",{cx:u.x,cy:u.y,r:4,class:"gnode-ue"})));
+
+    function show(which){
+      const g = which==="graph";
+      gGraph.style.opacity = g?1:0; gGraph.style.pointerEvents=g?"auto":"none";
+      gRaster.style.opacity = g?0.12:1;
+      gGraph.style.transition="opacity .4s"; gRaster.style.transition="opacity .4s";
+      bGraph.classList.toggle("on",g); bRaster.classList.toggle("on",!g);
+      if(state) state.textContent = g?"graph (faithful)":"raster (lossy)";
+    }
+    bGraph.addEventListener("click",()=>show("graph"));
+    bRaster.addEventListener("click",()=>show("raster"));
+    show("graph");
+  })();
+
+  /* ===================== S03 — message passing ===================== */
+  (function(){
+    const svg=document.getElementById("mpSvg"); if(!svg) return;
+    const bStep=document.getElementById("mpStep"), bReset=document.getElementById("mpReset"), hop=document.getElementById("mpHop");
+    const W=720,H=300;
+    // build a small graph with known hop distances from a source
+    const rng=mulberry32(99);
+    const nodes=[
+      {x:120,y:150,t:"cell"},                       // 0 = source
+      {x:260,y:80,t:"ue"},{x:260,y:150,t:"cell"},{x:260,y:230,t:"ue"},   // hop1
+      {x:420,y:60,t:"ue"},{x:420,y:140,t:"cell"},{x:420,y:230,t:"ue"},   // hop2
+      {x:580,y:110,t:"cell"},{x:580,y:210,t:"ue"}                        // hop3
+    ];
+    const edges=[[0,1],[0,2],[0,3],[2,4],[2,5],[3,6],[5,7],[6,8],[1,4]];
+    const dist=[0,1,1,1,2,2,2,3,3];
+    const lineEls=[], nodeEls=[];
+    edges.forEach(([a,b])=>{ const ln=el("line",{x1:nodes[a].x,y1:nodes[a].y,x2:nodes[b].x,y2:nodes[b].y,class:"gedge"}); svg.appendChild(ln); lineEls.push({ln,a,b}); });
+    nodes.forEach((n,i)=>{
+      let shp;
+      if(n.t==="cell"){ shp=el("rect",{x:n.x-13,y:n.y-13,width:26,height:26,rx:6,class:"gnode-cell"}); }
+      else { shp=el("circle",{cx:n.x,cy:n.y,r:9,class:"gnode-ue"}); }
+      svg.appendChild(shp); nodeEls.push(shp);
+      svg.appendChild(el("text",{x:n.x,y:n.y-20,class:"glabel","text-anchor":"middle",fill:"#5d6776"})).textContent = i===0?"source":"";
+    });
+    let curHop=0;
+    function paint(){
+      nodes.forEach((n,i)=>{
+        const lit = dist[i]<=curHop;
+        const shp=nodeEls[i];
+        if(n.t==="cell"){ shp.setAttribute("fill", lit?"rgba(79,233,200,.55)":"rgba(79,233,200,.14)"); }
+        else { shp.setAttribute("fill", lit?"rgba(176,139,255,.6)":"rgba(176,139,255,.18)"); }
+        shp.style.filter = (dist[i]===curHop && curHop>0) ? "drop-shadow(0 0 6px rgba(79,233,200,.8))" : "none";
+      });
+      lineEls.forEach(o=>{
+        const active = Math.min(dist[o.a],dist[o.b])<curHop && Math.max(dist[o.a],dist[o.b])<=curHop;
+        o.ln.setAttribute("stroke", active?"#4fe9c8":"#26333f");
+        o.ln.setAttribute("stroke-width", active?"2.2":"1.3");
+      });
+      if(hop) hop.textContent=String(curHop);
+    }
+    bStep.addEventListener("click",()=>{ curHop=Math.min(3,curHop+1); paint(); if(curHop>=3) bStep.textContent="✓ 3-hop reach"; else bStep.textContent="▶ Propagate one hop"; });
+    bReset.addEventListener("click",()=>{ curHop=0; bStep.textContent="▶ Propagate one hop"; paint(); });
+    paint();
+    if(!RM){ onVisible(svg,()=>{ let k=0; const iv=setInterval(()=>{ curHop=Math.min(3,curHop+1); paint(); if(++k>=3) clearInterval(iv); },700); }); }
+  })();
+
+  /* ===================== S04 — point vs quantile ===================== */
+  (function(){
+    const cv=document.getElementById("qCanvas"); if(!cv) return;
+    const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
+    const bBand=document.getElementById("qBand"), bPoint=document.getElementById("qPoint"), bRes=document.getElementById("qResample");
+    const covEl=document.getElementById("qCov"), state=document.getElementById("qState");
+    let mode="band", seed=1234, pts=[];
+    const N=120, padL=38, padR=14, padT=16, padB=26;
+    function trueMean(x){ return 0.5 + 0.32*Math.sin(x*3.0) + 0.12*Math.sin(x*7.0+1); } // x in [0,1]
+    function trueSd(x){ return 0.07 + 0.06*(0.5+0.5*Math.sin(x*4.0+2)); }
+    function gen(){ const rng=mulberry32(seed); pts=[]; for(let i=0;i<N;i++){ const x=i/(N-1); const m=trueMean(x), s=trueSd(x); pts.push({x, y:clamp(m+gauss(rng)*s,0.02,0.98), m, s}); } }
+    function X(x){ return padL+(W-padL-padR)*x; }
+    function Y(y){ return H-padB-(H-padT-padB)*y; }
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      // axes
+      ctx.strokeStyle="#26333f"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,H-padB); ctx.lineTo(W-padR,H-padB); ctx.stroke();
+      ctx.fillStyle="#5d6776"; ctx.font="9px 'IBM Plex Mono',monospace";
+      ctx.fillText("KPI",6,padT+8); ctx.fillText("scene / position →", W-120, H-8);
+      // band (p10-p90 ~ mean ± 1.28 sd)
+      if(mode==="band"){
+        ctx.beginPath();
+        for(let i=0;i<N;i++){ const x=X(pts[i].x), y=Y(clamp(pts[i].m+1.28*pts[i].s,0,1)); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+        for(let i=N-1;i>=0;i--){ const x=X(pts[i].x), y=Y(clamp(pts[i].m-1.28*pts[i].s,0,1)); ctx.lineTo(x,y); }
+        ctx.closePath(); ctx.fillStyle="rgba(79,233,200,.16)"; ctx.fill();
+        ctx.strokeStyle="rgba(79,233,200,.55)"; ctx.lineWidth=1; ctx.stroke();
+      }
+      // median / point line
+      ctx.beginPath(); for(let i=0;i<N;i++){ const x=X(pts[i].x), y=Y(pts[i].m); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+      ctx.strokeStyle = mode==="point" ? "#ff5d63" : "#4fe9c8"; ctx.lineWidth=2; ctx.stroke();
+      // true samples
+      let inside=0;
+      for(let i=0;i<N;i++){ const p=pts[i]; ctx.fillStyle="rgba(220,231,238,.55)"; ctx.beginPath(); ctx.arc(X(p.x),Y(p.y),1.6,0,6.28); ctx.fill();
+        if(p.y<=p.m+1.28*p.s && p.y>=p.m-1.28*p.s) inside++; }
+      const cov=Math.round(100*inside/N);
+      if(covEl) covEl.textContent = mode==="band" ? cov+"%" : "n/a";
+      if(covEl) covEl.className = "gv " + (mode==="band" ? (Math.abs(cov-80)<=8?"":"hot") : "hot");
+      if(state) state.textContent = mode==="band" ? "quantile band" : "point — spread lost";
+    }
+    function setMode(m){ mode=m; bBand.classList.toggle("on",m==="band"); bPoint.classList.toggle("on",m==="point"); draw(); }
+    bBand.addEventListener("click",()=>setMode("band"));
+    bPoint.addEventListener("click",()=>setMode("point"));
+    bRes.addEventListener("click",()=>{ seed=(seed*1664525+1013904223)>>>0; gen(); draw(); });
+    gen(); draw();
+  })();
+
+  /* ===================== S06 — latent shared shock ===================== */
+  (function(){
+    const cv=document.getElementById("zCanvas"); if(!cv) return;
+    const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
+    const bOn=document.getElementById("zOn"), bOff=document.getElementById("zOff"), bShock=document.getElementById("zShock"), state=document.getElementById("zState");
+    let useZ=true, t=0, shock=0, last=0;
+    const cols=6, rows=4, n=cols*rows;
+    const mw=(W-30)/cols, mh=(H-30)/rows;
+    const phase=[]; const rng=mulberry32(55); for(let i=0;i<n;i++) phase.push(rng()*6.28);
+    function draw(now){
+      const dt=Math.min(0.05,(now-(last||now))/1000); last=now; t+=dt; shock*=0.96;
+      ctx.clearRect(0,0,W,H);
+      let z = useZ ? (0.5*Math.sin(t*0.8) + shock) : 0;
+      for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+        const i=r*cols+c; const x=15+c*mw, y=15+r*mh;
+        const indep = 0.35*Math.sin(t*1.7+phase[i]);
+        const val = clamp(0.5 + (useZ? z*0.7 : 0) + indep*(useZ?0.35:1), 0, 1);
+        // tile
+        const g=Math.round(60+val*150), b=Math.round(70+val*120);
+        ctx.fillStyle=`rgba(${Math.round(30+val*40)},${g},${b},${0.3+val*0.6})`;
+        ctx.fillRect(x+2,y+2,mw-6,mh-6);
+        ctx.strokeStyle="rgba(38,51,63,.8)"; ctx.lineWidth=1; ctx.strokeRect(x+2,y+2,mw-6,mh-6);
+        // bar level
+        ctx.fillStyle="rgba(234,255,250,.8)"; const bh=(mh-10)*val; ctx.fillRect(x+mw-10,y+mh-4-bh,4,bh);
+      }
+      if(RM) return;
+      requestAnimationFrame(draw);
+    }
+    function setZ(v){ useZ=v; bOn.classList.toggle("on",v); bOff.classList.toggle("on",!v); if(state) state.textContent=v?"+ latent z":"no latent"; if(RM) draw(0); }
+    bOn.addEventListener("click",()=>setZ(true));
+    bOff.addEventListener("click",()=>setZ(false));
+    bShock.addEventListener("click",()=>{ shock = useZ? 0.9 : 0.0; if(!useZ){ /* shock has no coherent effect without z — that's the lesson */ } if(RM) draw(0); });
+    if(RM) draw(0); else requestAnimationFrame(draw);
+  })();
+
+  /* ===================== S07 — temporal rollout ===================== */
+  (function(){
+    const cv=document.getElementById("tCanvas"); if(!cv) return;
+    const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
+    const bPlay=document.getElementById("tPlay"), bStep=document.getElementById("tStep"), ttiEl=document.getElementById("tTTI");
+    const rng=mulberry32(2027);
+    const cells=[{x:140,y:70},{x:380,y:60},{x:560,y:110},{x:300,y:160}];
+    const ues=[]; for(let i=0;i<7;i++){ ues.push({x:rng()*W*0.8+40,y:rng()*H*0.7+30,vx:gauss(rng)*8,vy:gauss(rng)*6,s:0,ph:rng()*6.28}); }
+    let tti=0, playing=false, last=0, acc=0;
+    function assoc(u){ let best=0,bd=1e9; cells.forEach((c,i)=>{ const d=(c.x-u.x)**2+(c.y-u.y)**2; if(d<bd){bd=d;best=i;} }); return best; }
+    function stepOnce(){
+      tti++; ues.forEach(u=>{ u.x=clamp(u.x+u.vx,20,W-20); u.y=clamp(u.y+u.vy,20,H-20);
+        if(u.x<=20||u.x>=W-20) u.vx*=-1; if(u.y<=20||u.y>=H-20) u.vy*=-1; u.s=assoc(u); });
+    }
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      // interference edges
+      ctx.strokeStyle="rgba(255,93,99,.25)"; ctx.setLineDash([3,4]);
+      for(let i=0;i<cells.length;i++) for(let j=i+1;j<cells.length;j++){ ctx.beginPath(); ctx.moveTo(cells[i].x,cells[i].y); ctx.lineTo(cells[j].x,cells[j].y); ctx.stroke(); }
+      ctx.setLineDash([]);
+      // serving edges
+      ctx.strokeStyle="rgba(31,157,134,.8)"; ctx.lineWidth=1.3;
+      ues.forEach(u=>{ const c=cells[u.s]; ctx.beginPath(); ctx.moveTo(c.x,c.y); ctx.lineTo(u.x,u.y); ctx.stroke(); });
+      // cells + breathing band
+      cells.forEach((c,i)=>{
+        const spread=12+8*Math.abs(Math.sin(tti*0.25+i));
+        ctx.strokeStyle="rgba(79,233,200,.7)"; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(c.x+20,c.y-spread); ctx.lineTo(c.x+20,c.y+spread); ctx.stroke();
+        ctx.fillStyle="rgba(234,255,250,.9)"; ctx.beginPath(); ctx.arc(c.x+20,c.y+Math.sin(tti*0.2+i)*5,2.6,0,6.28); ctx.fill();
+        ctx.fillStyle="rgba(79,233,200,.16)"; ctx.strokeStyle="#4fe9c8"; ctx.lineWidth=1.5;
+        ctx.fillRect(c.x-12,c.y-12,24,24); ctx.strokeRect(c.x-12,c.y-12,24,24);
+      });
+      // ues
+      ues.forEach(u=>{ ctx.fillStyle="rgba(176,139,255,.85)"; ctx.beginPath(); ctx.arc(u.x,u.y,5,0,6.28); ctx.fill(); });
+      if(ttiEl) ttiEl.textContent=String(tti).padStart(3,"0");
+    }
+    function loop(now){ if(!playing) return; const dt=now-(last||now); last=now; acc+=dt; if(acc>360){ acc=0; stepOnce(); } draw(); requestAnimationFrame(loop); }
+    bPlay.addEventListener("click",()=>{ playing=!playing; bPlay.textContent=playing?"⏸ pause":"▶ play rollout"; if(playing){ last=0; requestAnimationFrame(loop); } });
+    bStep.addEventListener("click",()=>{ stepOnce(); draw(); });
+    draw();
+    if(!RM) onVisible(cv,()=>{ playing=true; bPlay.textContent="⏸ pause"; last=0; requestAnimationFrame(loop); });
+  })();
+
+  /* ===================== S09 — reliability diagram ===================== */
+  (function(){
+    const cv=document.getElementById("relCanvas"); if(!cv) return;
+    const ctx=cv.getContext("2d"), W=cv.width, H=cv.height;
+    const bCal=document.getElementById("relCal"), bOver=document.getElementById("relOver"), bUnder=document.getElementById("relUnder"), state=document.getElementById("relState");
+    let mode="cal";
+    const padL=44, padR=16, padT=18, padB=40;
+    function X(v){ return padL+(W-padL-padR)*v; }
+    function Y(v){ return H-padB-(H-padT-padB)*v; }
+    function emp(nom){ if(mode==="cal") return nom + (Math.random()*0-0); if(mode==="over") return Math.max(0,nom-0.18*Math.sin(nom*Math.PI)); return Math.min(1,nom+0.18*Math.sin(nom*Math.PI)); }
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      // frame
+      ctx.strokeStyle="#26333f"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,H-padB); ctx.lineTo(W-padR,H-padB); ctx.stroke();
+      ctx.fillStyle="#5d6776"; ctx.font="9.5px 'IBM Plex Mono',monospace";
+      ctx.save(); ctx.translate(12,H/2); ctx.rotate(-Math.PI/2); ctx.fillText("empirical coverage",-46,0); ctx.restore();
+      ctx.fillText("nominal coverage", W/2-44, H-10);
+      // diagonal (perfect)
+      ctx.setLineDash([4,4]); ctx.strokeStyle="rgba(255,180,84,.7)"; ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(1),Y(1)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle="rgba(255,180,84,.8)"; ctx.fillText("ideal (calibrated)", X(0.5)-30, Y(0.5)-8);
+      // curve
+      ctx.beginPath();
+      for(let i=0;i<=20;i++){ const nom=i/20; const e=clamp((mode==="cal")?nom:(mode==="over"?nom-0.16*Math.sin(nom*Math.PI):nom+0.16*Math.sin(nom*Math.PI)),0,1);
+        const x=X(nom), y=Y(e); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }
+      ctx.strokeStyle = mode==="cal"?"#4fe9c8":"#ff5d63"; ctx.lineWidth=2.4; ctx.stroke();
+      // points
+      [0.5,0.8,0.9].forEach(nom=>{ const e=clamp((mode==="cal")?nom:(mode==="over"?nom-0.16*Math.sin(nom*Math.PI):nom+0.16*Math.sin(nom*Math.PI)),0,1);
+        ctx.fillStyle = mode==="cal"?"#4fe9c8":"#ff5d63"; ctx.beginPath(); ctx.arc(X(nom),Y(e),4,0,6.28); ctx.fill(); });
+      if(state) state.textContent = mode==="cal"?"calibrated ✓":(mode==="over"?"over-confident ✗":"under-confident ✗");
+    }
+    function setMode(m){ mode=m; bCal.classList.toggle("on",m==="cal"); bOver.classList.toggle("on",m==="over"); bUnder.classList.toggle("on",m==="under"); draw(); }
+    bCal.addEventListener("click",()=>setMode("cal"));
+    bOver.addEventListener("click",()=>setMode("over"));
+    bUnder.addEventListener("click",()=>setMode("under"));
+    draw();
+  })();
+
+  /* ===================== v0 pipeline flow ===================== */
+  (function(){
+    const svg=document.getElementById("v0flow"); if(!svg) return;
+    const boxes=[
+      {x:8,y:50,w:120,h:50,cls:"tile",t1:"HeteroData",t2:"cells+UEs · edges",lab:"input"},
+      {x:170,y:45,w:150,h:60,cls:"bb",t1:"HETERO-GNN",t2:"HGTConv ×2–3",lab:"encoder"},
+      {x:360,y:45,w:130,h:60,cls:"ad",t1:"EMBEDDINGS",t2:"per-node h_i",lab:"latent"},
+      {x:530,y:18,w:110,h:34,cls:"out",t1:"UE quantile",t2:"RSRP/SINR"},
+      {x:530,y:58,w:110,h:34,cls:"out",t1:"handover",t2:"event head"},
+      {x:530,y:98,w:110,h:34,cls:"out",t1:"cell quantile",t2:"scheduler"},
+      {x:672,y:58,w:80,h:34,cls:"tile",t1:"pinball",t2:"+ BCE loss"}
+    ];
+    boxes.forEach(b=>{
+      svg.appendChild(el("rect",{x:b.x,y:b.y,width:b.w,height:b.h,rx:7,class:"flow "+b.cls}));
+      const c1=b.x+b.w/2;
+      const t=el("text",{x:c1,y:b.y+ (b.h>40?b.h/2-2:b.h/2+1),"text-anchor":"middle",class:"flow "+(b.cls==="bb"?"bblabel":b.cls==="ad"?"adlabel":b.cls==="out"?"outlabel":"tlabel")});
+      t.textContent=b.t1; svg.appendChild(t);
+      const t2=el("text",{x:c1,y:b.y+(b.h>40?b.h/2+12:b.h/2+13),"text-anchor":"middle",class:"flow sub"});
+      t2.textContent=b.t2; svg.appendChild(t2);
+    });
+    function conn(x1,y1,x2,y2,live){ const p=el("path",{d:`M${x1} ${y1} C${(x1+x2)/2} ${y1}, ${(x1+x2)/2} ${y2}, ${x2} ${y2}`,class:"flow conn"+(live&&!RM?" live":"")}); svg.appendChild(p); }
+    // styles for connector
+    const st=document.createElement("style"); st.textContent=".flow .conn{stroke:#26333f;stroke-width:1.4;fill:none}.flow .conn.live{stroke:#1f9d86;stroke-dasharray:5 6;animation:dashv0 1.1s linear infinite}@keyframes dashv0{to{stroke-dashoffset:-22}}"; document.head.appendChild(st);
+    conn(128,75,170,75,true);
+    conn(320,75,360,75,true);
+    conn(490,75,530,35,true); conn(490,75,530,75,true); conn(490,75,530,115,true);
+    conn(640,35,672,75,false); conn(640,75,672,75,false); conn(640,115,672,75,false);
+  })();
+
+  /* header rung tracker */
+  (function(){
+    const hd=document.getElementById("hdRung"); if(!hd) return;
+    const map=[["s05","v0"],["s06","v0.5"],["s07","v1"],["s08","+head"],["s09","eval"],["s10","ship"],["s02","graph"],["s03","msg"],["s04","dist"],["s01","bg"],["s00","model"]];
+    const secs=map.map(([id,lab])=>({el:document.getElementById(id),lab})).filter(o=>o.el);
+    if(!("IntersectionObserver" in window)) return;
+    const io=new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting){ const m=secs.find(s=>s.el===e.target); if(m) hd.textContent=m.lab; } }); },{threshold:.5});
+    secs.forEach(s=>io.observe(s.el));
+  })();
+})();
+</script>
+</body>
+</html>
